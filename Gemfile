@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-ruby '2.7.0'
+ruby '2.7.1'
 
 ##-- base gems for rails --##
 gem 'rack-cors', require: 'rack/cors'
@@ -8,7 +8,7 @@ gem 'rails'
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
 
-##-- rails helper gems --##
+##-- rails application helper gems --##
 gem 'acts-as-taggable-on'
 gem 'attr_extras'
 gem 'browser'
@@ -23,6 +23,12 @@ gem 'tzinfo-data'
 gem 'valid_email2'
 # compress javascript config.assets.js_compressor
 gem 'uglifier'
+##-- used for single column multiple binary flags in notification settings/feature flagging --##
+gem 'flag_shih_tzu'
+# Random name generator for user names
+gem 'haikunator'
+# Template parsing safetly
+gem 'liquid'
 
 ##-- for active storage --##
 gem 'aws-sdk-s3', require: false
@@ -41,7 +47,9 @@ gem 'redis-rack-cache'
 gem 'dotenv-rails'
 gem 'foreman'
 gem 'puma'
-gem 'webpacker'
+gem 'webpacker', '~> 5.x'
+# metrics on heroku
+gem 'barnes'
 
 ##--- gems for authentication & authorization ---##
 gem 'devise'
@@ -49,24 +57,25 @@ gem 'devise_token_auth'
 # authorization
 gem 'jwt'
 gem 'pundit'
+# super admin
+gem 'administrate'
 
 ##--- gems for pubsub service ---##
 # https://karolgalanciak.com/blog/2019/11/30/from-activerecord-callbacks-to-publish-slash-subscribe-pattern-and-event-driven-design/
 gem 'wisper', '2.0.0'
 
-##--- gems for billing ---##
-gem 'chargebee'
-
 ##--- gems for channels ---##
-gem 'facebook-messenger'
+# TODO: bump up gem to 2.0
+gem 'facebook-messenger', '1.5.0'
 gem 'telegram-bot-ruby'
 gem 'twilio-ruby', '~> 5.32.0'
 # twitty will handle subscription of twitter account events
-gem 'twitty', git: 'https://github.com/chatwoot/twitty'
+# gem 'twitty', git: 'https://github.com/chatwoot/twitty'
+gem 'twitty'
 # facebook client
 gem 'koala'
-# Random name generator
-gem 'haikunator'
+# slack client
+gem 'slack-ruby-client'
 
 ##--- gems for debugging and error reporting ---##
 # static analysis
@@ -77,10 +86,8 @@ gem 'sentry-raven'
 ##-- background job processing --##
 gem 'sidekiq'
 
-##-- used for single column multiple binary flags in notification settings/feature flagging --##
-gem 'flag_shih_tzu'
-
 ##-- Push notification service --##
+gem 'fcm'
 gem 'webpush'
 
 group :development do
@@ -91,6 +98,16 @@ group :development do
 
   # used in swagger build
   gem 'json_refs', git: 'https://github.com/tzmfreedom/json_refs', ref: 'e32deb0'
+
+  # When we want to squash migrations
+  gem 'squasher'
+end
+
+group :test do
+  # Cypress in rails.
+  gem 'cypress-on-rails', '~> 1.0'
+  # fast cleaning of database
+  gem 'database_cleaner'
 end
 
 group :development, :test do
@@ -114,4 +131,5 @@ group :development, :test do
   gem 'simplecov', '0.17.1', require: false
   gem 'spring'
   gem 'spring-watcher-listen'
+  gem 'webmock'
 end

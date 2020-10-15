@@ -4,32 +4,38 @@ require:
   - rubocop-rspec
 inherit_from: .rubocop_todo.yml
 
-Lint/RaiseException:
-  Enabled: true
-Lint/StructNewOverride:
-  Enabled: true
 Layout/LineLength:
   Max: 150
+
 Metrics/ClassLength:
   Max: 125
+  Exclude:
+    - 'app/models/conversation.rb'
 RSpec/ExampleLength:
   Max: 25
 Style/Documentation:
+  Enabled: false
+Style/ExponentialNotation:
   Enabled: false
 Style/FrozenStringLiteralComment:
   Enabled: false
 Style/SymbolArray:
   Enabled: false
-Style/HashEachMethods:
-  Enabled: true
-Style/HashTransformKeys:
-  Enabled: true
-Style/HashTransformValues:
-  Enabled: true
+Style/OptionalBooleanParameter:
+  Exclude: 
+    - 'app/services/email_templates/db_resolver_service.rb'
+    - 'app/dispatchers/dispatcher.rb'
 Style/GlobalVars:
   Exclude:
     - 'config/initializers/redis.rb'
     - 'lib/redis/alfred.rb'
+    - 'lib/global_config.rb'
+Style/ClassVars:
+  Exclude:
+    - 'app/services/email_templates/db_resolver_service.rb'
+Lint/MissingSuper:
+  Exclude:
+    - 'app/drops/base_drop.rb'
 Metrics/BlockLength:
   Exclude:
     - spec/**/*
@@ -62,12 +68,14 @@ Style/GuardClause:
     - 'app/builders/account_builder.rb'
     - 'app/models/attachment.rb'
     - 'app/models/message.rb'
-    - 'lib/webhooks/chargebee.rb'
     - 'db/migrate/20190819005836_add_missing_indexes_on_taggings.acts_as_taggable_on_engine.rb'
 Metrics/AbcSize:
   Exclude: 
+    - 'app/controllers/concerns/auth_helper.rb'
     - 'db/migrate/20190819005836_add_missing_indexes_on_taggings.acts_as_taggable_on_engine.rb'
+    - 'db/migrate/20161123131628_devise_token_auth_create_users.rb'
 Metrics/CyclomaticComplexity:
+  Max: 7
   Exclude:
     - 'db/migrate/20190819005836_add_missing_indexes_on_taggings.acts_as_taggable_on_engine.rb'
 Rails/ReversibleMigration:
@@ -94,15 +102,25 @@ Rails/UniqueValidationWithoutIndex:
   Exclude:
     - 'app/models/channel/twitter_profile.rb'
     - 'app/models/webhook.rb'
+Rails/RenderInline:
+  Exclude:
+    - 'app/controllers/swagger_controller.rb'
+RSpec/NamedSubject:
+  Enabled: false
+# we should bring this down
+RSpec/MultipleMemoizedHelpers:
+  Max: 12
 AllCops:
+  NewCops: enable
   Exclude:
     - 'bin/**/*'
     - 'db/schema.rb'
-    - 'config/**/*'
     - 'public/**/*'
+    - 'config/initializers/bot.rb'
     - 'vendor/**/*'
     - 'node_modules/**/*'
     - 'lib/tasks/auto_annotate_models.rake'
     - 'config/environments/**/*'
     - 'tmp/**/*'
     - 'storage/**/*'
+    - 'db/migrate/20200225162150_init_schema.rb'

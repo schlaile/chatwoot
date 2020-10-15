@@ -1,12 +1,18 @@
 class WidgetsController < ActionController::Base
+  before_action :set_global_config
   before_action :set_web_widget
   before_action :set_token
   before_action :set_contact
   before_action :build_contact
+  after_action :allow_iframe_requests
 
   def index; end
 
   private
+
+  def set_global_config
+    @global_config = GlobalConfig.get('LOGO_THUMBNAIL', 'BRAND_NAME', 'WIDGET_BRAND_URL')
+  end
 
   def set_web_widget
     @web_widget = ::Channel::WebWidget.find_by!(website_token: permitted_params[:website_token])
@@ -44,5 +50,9 @@ class WidgetsController < ActionController::Base
 
   def permitted_params
     params.permit(:website_token, :cw_conversation)
+  end
+
+  def allow_iframe_requests
+    response.headers.delete('X-Frame-Options')
   end
 end

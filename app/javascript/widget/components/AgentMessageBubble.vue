@@ -1,10 +1,10 @@
 <template>
-  <div>
+  <div class="chat-bubble-wrap">
     <div
       v-if="!isCards && !isOptions && !isForm && !isArticle"
       class="chat-bubble agent"
     >
-      <span v-html="formatMessage(message)"></span>
+      <span v-html="formatMessage(message, false)"></span>
       <email-input
         v-if="isTemplateEmail"
         :message-id="messageId"
@@ -21,8 +21,9 @@
       </chat-options>
     </div>
     <chat-form
-      v-if="isForm"
+      v-if="isForm && !messageContentAttributes.submitted_values"
       :items="messageContentAttributes.items"
+      :button-label="messageContentAttributes.button_label"
       :submitted-values="messageContentAttributes.submitted_values"
       @submit="onFormSubmit"
     >

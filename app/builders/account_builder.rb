@@ -2,15 +2,18 @@
 
 class AccountBuilder
   include CustomExceptions::Account
-  pattr_initialize [:account_name!, :email!]
+  pattr_initialize [:account_name!, :email!, :confirmed!, :user]
 
   def perform
-    validate_email
-    validate_user
+    if @user.nil?
+      validate_email
+      validate_user
+    end
     ActiveRecord::Base.transaction do
       @account = create_account
       @user = create_and_link_user
     end
+    [@user, @account]
   rescue StandardError => e
     @account&.destroy
     puts e.inspect
@@ -38,15 +41,11 @@ class AccountBuilder
 
   def create_account
     @account = Account.create!(name: @account_name)
+    Current.account = @account
   end
 
   def create_and_link_user
-    password = Time.now.to_i
-    @user = User.new(email: @email,
-                     password: password,
-                     password_confirmation: password,
-                     name: email_to_name(@email))
-    if @user.save!
+    if @user.present? || create_user
       link_user_to_account(@user, @account)
       @user
     else
@@ -65,5 +64,15 @@ class AccountBuilder
   def email_to_name(email)
     name = email[/[^@]+/]
     name.split('.').map(&:capitalize).join(' ')
+  end
+
+  def create_user
+    password = Time.now.to_i
+    @user = User.new(email: @email,
+                     password: password,
+                     password_confirmation: password,
+                     name: email_to_name(@email))
+    @user.confirm if @confirmed
+    @user.save!
   end
 end

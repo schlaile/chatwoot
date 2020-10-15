@@ -2,21 +2,23 @@
   <div class="home">
     <div class="header-wrap">
       <ChatHeaderExpanded
-        v-if="isHeaderExpanded"
+        v-if="isHeaderExpanded && !hideWelcomeHeader"
         :intro-heading="introHeading"
         :intro-body="introBody"
         :avatar-url="channelConfig.avatarUrl"
+        :show-popout-button="showPopoutButton"
       />
       <ChatHeader
         v-else
         :title="channelConfig.websiteName"
         :avatar-url="channelConfig.avatarUrl"
+        :show-popout-button="showPopoutButton"
       />
     </div>
     <AvailableAgents v-if="showAvailableAgents" :agents="availableAgents" />
     <ConversationWrap :grouped-messages="groupedMessages" />
     <div class="footer-wrap">
-      <div class="input-wrap">
+      <div v-if="showInputTextArea" class="input-wrap">
         <ChatFooter />
       </div>
       <branding></branding>
@@ -25,14 +27,13 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex';
-
 import Branding from 'widget/components/Branding.vue';
 import ChatFooter from 'widget/components/ChatFooter.vue';
 import ChatHeaderExpanded from 'widget/components/ChatHeaderExpanded.vue';
 import ChatHeader from 'widget/components/ChatHeader.vue';
 import ConversationWrap from 'widget/components/ConversationWrap.vue';
 import AvailableAgents from 'widget/components/AvailableAgents.vue';
+import configMixin from '../mixins/configMixin';
 
 export default {
   name: 'Home',
@@ -44,30 +45,64 @@ export default {
     Branding,
     AvailableAgents,
   },
+  mixins: [configMixin],
+  props: {
+    groupedMessages: {
+      type: Array,
+      default: () => [],
+    },
+    conversationSize: {
+      type: Number,
+      default: 0,
+    },
+    availableAgents: {
+      type: Array,
+      default: () => [],
+    },
+    hasFetched: {
+      type: Boolean,
+      default: false,
+    },
+    conversationAttributes: {
+      type: Object,
+      default: () => {},
+    },
+    unreadMessageCount: {
+      type: Number,
+      default: 0,
+    },
+    showPopoutButton: {
+      type: Boolean,
+      default: false,
+    },
+  },
   computed: {
-    ...mapGetters({
-      groupedMessages: 'conversation/getGroupedConversation',
-      conversationSize: 'conversation/getConversationSize',
-      availableAgents: 'agent/availableAgents',
-      hasFetched: 'agent/uiFlags/hasFetched',
-    }),
+    isOpen() {
+      return this.conversationAttributes.status === 'open';
+    },
+    showInputTextArea() {
+      if (this.hideInputForBotConversations) {
+        if (this.isOpen) {
+          return true;
+        }
+        return false;
+      }
+      return true;
+    },
     isHeaderExpanded() {
       return this.conversationSize === 0;
-    },
-    channelConfig() {
-      return window.chatwootWebChannel;
     },
     showAvailableAgents() {
       return this.availableAgents.length > 0 && this.conversationSize < 1;
     },
     introHeading() {
-      return this.channelConfig.welcomeTitle || 'Hi there ! 🙌🏼';
+      return this.channelConfig.welcomeTitle;
     },
     introBody() {
-      return (
-        this.channelConfig.welcomeTagline ||
-        'We make it simple to connect with us. Ask us anything, or share your feedback.'
-      );
+      return this.channelConfig.welcomeTagline;
+    },
+    hideWelcomeHeader() {
+      return !(this.introHeading || this.introBody);
     },
   },
 };

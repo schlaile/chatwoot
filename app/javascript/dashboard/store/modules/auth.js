@@ -1,6 +1,5 @@
 /* eslint no-param-reassign: 0 */
 import axios from 'axios';
-import moment from 'moment';
 import Vue from 'vue';
 import * as types from '../mutation-types';
 import authAPI from '../../api/auth';
@@ -22,6 +21,7 @@ const state = {
       expiry: null,
     },
   },
+  currentAccountId: null,
 };
 
 // getters
@@ -34,23 +34,24 @@ export const getters = {
     return _state.currentUser.id;
   },
 
+  getCurrentUserAvailabilityStatus(_state) {
+    return _state.currentUser.availability_status;
+  },
+
+  getCurrentAccountId(_state) {
+    return _state.currentAccountId;
+  },
+
+  getCurrentRole(_state) {
+    const { accounts = [] } = _state.currentUser;
+    const [currentAccount = {}] = accounts.filter(
+      account => account.id === _state.currentAccountId
+    );
+    return currentAccount.role;
+  },
+
   getCurrentUser(_state) {
     return _state.currentUser;
-  },
-
-  getSubscription(_state) {
-    return _state.currentUser.subscription === undefined
-      ? null
-      : _state.currentUser.subscription;
-  },
-
-  getTrialLeft(_state) {
-    const createdAt =
-      _state.currentUser.subscription === undefined
-        ? moment()
-        : _state.currentUser.subscription.expiry * 1000;
-    const daysLeft = moment(createdAt).diff(moment(), 'days');
-    return daysLeft < 0 ? 0 : daysLeft;
   },
 };
 
@@ -103,10 +104,26 @@ export const actions = {
       // Ignore error
     }
   },
+
+  setCurrentAccountId({ commit }, accountId) {
+    commit(types.default.SET_CURRENT_ACCOUNT_ID, accountId);
+  },
+
+  setCurrentUserAvailabilityStatus({ commit, state: $state }, data) {
+    if (data[$state.currentUser.id]) {
+      commit(
+        types.default.SET_CURRENT_USER_AVAILABILITY,
+        data[$state.currentUser.id]
+      );
+    }
+  },
 };
 
 // mutations
 const mutations = {
+  [types.default.SET_CURRENT_USER_AVAILABILITY](_state, status) {
+    Vue.set(_state.currentUser, 'availability_status', status);
+  },
   [types.default.CLEAR_USER](_state) {
     _state.currentUser.id = null;
   },
@@ -117,6 +134,9 @@ const mutations = {
     };
 
     Vue.set(_state, 'currentUser', currentUser);
+  },
+  [types.default.SET_CURRENT_ACCOUNT_ID](_state, accountId) {
+    Vue.set(_state, 'currentAccountId', Number(accountId));
   },
 };
 

@@ -46,9 +46,18 @@
           "TITLE": "Verwijdering bevestigen",
           "MESSAGE": "Weet u zeker dat u wilt verwijderen ",
           "YES": "Ja, verwijderen ",
-          "NO": "Nee, Bewaar het "
+          "NO": "Nee, Bewaar het"
         }
       }
+    },
+    "DELETE": {
+      "BUTTON_TEXT": "Verwijderen",
+      "API": {
+        "SUCCESS_MESSAGE": "Integration deleted successfully"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "Connect"
     }
   }
 }

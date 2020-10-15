@@ -1,3 +1,5 @@
+import { WOOT_PREFIX } from './constants';
+
 export const isEmptyObject = obj =>
   Object.keys(obj).length === 0 && obj.constructor === Object;
 
@@ -16,21 +18,11 @@ export const IFrameHelper = {
       '*'
     );
   },
-};
-
-export const getAvailableAgentsText = (agents = []) => {
-  const count = agents.length;
-  if (count === 1) {
-    const [agent] = agents;
-    return `${agent.name} is available`;
-  }
-
-  if (count === 2) {
-    const [first, second] = agents;
-    return `${first.name} and ${second.name} are available`;
-  }
-
-  const [agent] = agents;
-  const rest = agents.length - 1;
-  return `${agent.name} and ${rest} others are available`;
+  isAValidEvent: e => {
+    const isDataAString = typeof e.data === 'string';
+    const isAValidWootEvent =
+      isDataAString && e.data.indexOf(WOOT_PREFIX) === 0;
+    return isAValidWootEvent;
+  },
+  getMessage: e => JSON.parse(e.data.replace(WOOT_PREFIX, '')),
 };

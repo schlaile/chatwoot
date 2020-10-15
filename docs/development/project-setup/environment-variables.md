@@ -6,7 +6,15 @@ title: "Environment Variables"
 
 ### Database configuration
 
-Use the following values in database.yml which lives inside `config` directory.
+You can set Postgres connection URI as `DATABASE_URL` in the environment to connect to the database.
+
+The URI is of the format
+
+```bash
+postgresql://[user[:password]@][netloc][:port][,...][/dbname][?param1=value1&...]
+```
+
+Alternatively, use the following values in database.yml which lives inside `config` directory.
 
 ```bash
 development:
@@ -39,6 +47,42 @@ MAILER_SENDER_EMAIL=
 SMTP_ADDRESS=
 SMTP_USERNAME=
 SMTP_PASSWORD=
+```
+
+If you would like to use Sendgrid to send your emails, use the following environment variables:
+```bash
+SMTP_ADDRESS=smtp.sendgrid.net
+SMTP_AUTHENTICATION=plain
+SMTP_DOMAIN=<your verified domain>
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_PORT=587
+SMTP_USERNAME=apikey
+SMTP_PASSWORD=<your Sendgrid API key>
+```
+
+If you would like to use Mailgun to send your emails, use the following environment variables:
+```bash
+SMTP_ADDRESS=smtp.mailgun.org
+SMTP_AUTHENTICATION=plain
+SMTP_DOMAIN=<Your domain, this has to be verified in Mailgun>
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_PORT=587
+SMTP_USERNAME=<Your SMTP username, view under Domains tab>
+SMTP_PASSWORD=<Your SMTP password, view under Domains tab>
+```
+
+
+If you would like to use Mailchimp to send your emails, use the following environment variables:
+Note: Mandrill is the transactional email service for Mailchimp. You need to enable transactional email and login to mandrillapp.com.
+
+```bash
+SMTP_ADDRESS=smtp.mandrillapp.com
+SMTP_AUTHENTICATION=plain
+SMTP_DOMAIN=<Your verified domain in Mailchimp>
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_PORT=587
+SMTP_USERNAME=<Your SMTP username displayed under Settings -> SMTP & API info>
+SMTP_PASSWORD=<Any valid API key, create an API key under Settings -> SMTP & API Info>
 ```
 
 ### Configure frontend URL
@@ -114,3 +158,28 @@ LOG_LEVEL=
 # value in megabytes
 LOG_SIZE= 1024
 ```
+
+### Push Notification
+
+Chatwoot uses web push for push notification on the dashboard. Inorder to get the push notifications working you have to setup the following [VAPID](https://tools.ietf.org/html/draft-thomson-webpush-vapid-02) keys.
+
+```bash
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+```
+
+If you are comfortable with the Rails console, you could run `rails console` and run the following commands
+
+```rb
+vapid_key = Webpush.generate_key
+
+# Copy the following to environment variables
+vapid_key.public_key
+vapid_key.private_key
+```
+
+Or you can generate a VAPID key from https://d3v.one/vapid-key-generator/
+
+### Using CDN for asset delivery
+
+With the release v1.8.0, we are enabling CDN support for Chatwoot. If you have a high traffic website, we recommend to setup CDN for your asset delivery. Read setting up [CloudFront as your CDN](/docs/deployment/cdn/cloudfront) guide.

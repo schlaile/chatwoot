@@ -22,77 +22,89 @@ Rails.application.routes.draw do
     namespace :v1 do
       # ----------------------------------
       # start of account scoped api routes
-      resources :accounts, only: [:create, :show, :update], module: :accounts do
-        namespace :actions do
-          resource :contact_merge, only: [:create]
+      resources :accounts, only: [:create, :show, :update] do
+        member do
+          post :update_active_at
         end
 
-        resources :agents, except: [:show, :edit, :new]
-        resources :callbacks, only: [] do
-          collection do
-            post :register_facebook_page
-            get :register_facebook_page
-            post :facebook_pages
-            post :reauthorize_page
+        scope module: :accounts do
+          namespace :actions do
+            resource :contact_merge, only: [:create]
           end
-        end
-        resources :canned_responses, except: [:show, :edit, :new]
-        namespace :channels do
-          resource :twilio_channel, only: [:create]
-        end
-        resources :conversations, only: [:index, :create, :show] do
-          get 'meta', on: :collection
-          scope module: :conversations do
-            resources :messages, only: [:index, :create]
-            resources :assignments, only: [:create]
-            resources :labels, only: [:create, :index]
-          end
-          member do
-            post :toggle_status
-            post :toggle_typing_status
-            post :update_last_seen
-          end
-        end
 
-        resources :contacts, only: [:index, :show, :update, :create] do
-          scope module: :contacts do
-            resources :conversations, only: [:index]
+          resources :agents, except: [:show, :edit, :new]
+          resources :callbacks, only: [] do
+            collection do
+              post :register_facebook_page
+              get :register_facebook_page
+              post :facebook_pages
+              post :reauthorize_page
+            end
+          end
+          resources :canned_responses, except: [:show, :edit, :new]
+          namespace :channels do
+            resource :twilio_channel, only: [:create]
+          end
+          resources :conversations, only: [:index, :create, :show] do
+            get 'meta', on: :collection
+            scope module: :conversations do
+              resources :messages, only: [:index, :create]
+              resources :assignments, only: [:create]
+              resources :labels, only: [:create, :index]
+            end
+            member do
+              post :mute
+              post :transcript
+              post :toggle_status
+              post :toggle_typing_status
+              post :update_last_seen
+            end
+          end
+
+          resources :contacts, only: [:index, :show, :update, :create] do
+            collection do
+              get :search
+            end
+            scope module: :contacts do
+              resources :conversations, only: [:index]
+              resources :contact_inboxes, only: [:create]
+            end
+          end
+
+          resources :facebook_indicators, only: [] do
+            collection do
+              post :mark_seen
+              post :typing_on
+              post :typing_off
+            end
+          end
+
+          resources :inboxes, only: [:index, :create, :update, :destroy] do
+            post :set_agent_bot, on: :member
+          end
+          resources :inbox_members, only: [:create, :show], param: :inbox_id
+          resources :labels, only: [:index, :show, :create, :update, :destroy]
+
+          resources :notifications, only: [:index, :update] do
+            collection do
+              post :read_all
+            end
+          end
+          resource :notification_settings, only: [:show, :update]
+
+          resources :webhooks, except: [:show]
+          namespace :integrations do
+            resources :apps, only: [:index, :show]
+            resource :slack, only: [:create, :update, :destroy], controller: 'slack'
           end
         end
-
-        resources :facebook_indicators, only: [] do
-          collection do
-            post :mark_seen
-            post :typing_on
-            post :typing_off
-          end
-        end
-
-        resources :inboxes, only: [:index, :create, :update, :destroy] do
-          post :set_agent_bot, on: :member
-        end
-        resources :inbox_members, only: [:create, :show], param: :inbox_id
-        resources :labels, only: [:index] do
-          collection do
-            get :most_used
-          end
-        end
-
-        resources :notifications, only: [:index, :update]
-        resource :notification_settings, only: [:show, :update]
-
-        # this block is only required if subscription via chargebee is enabled
-        resources :subscriptions, only: [:index] do
-          collection do
-            get :summary
-          end
-        end
-
-        resources :webhooks, except: [:show]
       end
-
       # end of account scoped api routes
       # ----------------------------------
+
+      namespace :integrations do
+        resources :webhooks, only: [:create]
+      end
 
       resource :profile, only: [:show, :update]
       resource :notification_subscriptions, only: [:create]
@@ -102,20 +114,16 @@ Rails.application.routes.draw do
       namespace :widget do
         resources :events, only: [:create]
         resources :messages, only: [:index, :create, :update]
-        resources :conversations do
+        resources :conversations, only: [:index] do
           collection do
+            post :update_last_seen
             post :toggle_typing
+            post :transcript
           end
         end
         resource :contact, only: [:update]
         resources :inbox_members, only: [:index]
         resources :labels, only: [:create, :destroy]
-      end
-
-      resources :webhooks, only: [] do
-        collection do
-          post :chargebee
-        end
       end
     end
 
@@ -168,20 +176,25 @@ Rails.application.routes.draw do
   # Internal Monitoring Routes
   require 'sidekiq/web'
 
-  scope :monitoring do
-    # Sidekiq should use basic auth in production environment
-    if Rails.env.production?
-      Sidekiq::Web.use Rack::Auth::Basic do |username, password|
-        ENV['SIDEKIQ_AUTH_USERNAME'] &&
-          ENV['SIDEKIQ_AUTH_PASSWORD'] &&
-          ActiveSupport::SecurityUtils.secure_compare(::Digest::SHA256.hexdigest(username),
-                                                      ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_AUTH_USERNAME'])) &&
-          ActiveSupport::SecurityUtils.secure_compare(::Digest::SHA256.hexdigest(password),
-                                                      ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_AUTH_PASSWORD']))
-      end
-    end
+  devise_for :super_admins, path: 'super_admin', controllers: { sessions: 'super_admin/devise/sessions' }
+  devise_scope :super_admin do
+    get 'super_admin/logout', to: 'super_admin/devise/sessions#destroy'
+    namespace :super_admin do
+      root to: 'dashboard#index'
 
-    mount Sidekiq::Web, at: '/sidekiq'
+      # order of resources affect the order of sidebar navigation in super admin
+      resources :accounts
+      resources :users, only: [:index, :new, :create, :show, :edit, :update]
+      resources :super_admins
+      resources :access_tokens, only: [:index, :show]
+
+      # resources that doesn't appear in primary navigation in super admin
+      resources :account_users, only: [:new, :create, :destroy]
+      resources :agent_bots, only: [:index, :new, :create, :show, :edit, :update]
+    end
+    authenticated :super_admin do
+      mount Sidekiq::Web => '/monitoring/sidekiq'
+    end
   end
 
   # ---------------------------------------------------------------------

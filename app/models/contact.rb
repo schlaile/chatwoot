@@ -4,6 +4,7 @@
 #
 #  id                    :integer          not null, primary key
 #  additional_attributes :jsonb
+#  custom_attributes     :jsonb
 #  email                 :string
 #  identifier            :string
 #  name                  :string
@@ -25,7 +26,6 @@ class Contact < ApplicationRecord
   include Pubsubable
   include Avatarable
   include AvailabilityStatusable
-  include Events::Types
 
   validates :account_id, presence: true
   validates :email, allow_blank: true, uniqueness: { scope: [:account_id], case_sensitive: false }
@@ -35,11 +35,11 @@ class Contact < ApplicationRecord
   has_many :conversations, dependent: :destroy
   has_many :contact_inboxes, dependent: :destroy
   has_many :inboxes, through: :contact_inboxes
-  has_many :messages, dependent: :destroy
+  has_many :messages, as: :sender, dependent: :destroy
 
-  before_validation :downcase_email
-  after_create :dispatch_create_event
-  after_update :dispatch_update_event
+  before_validation :prepare_email_attribute
+  after_create_commit :dispatch_create_event
+  after_update_commit :dispatch_update_event
 
   def get_source_id(inbox_id)
     contact_inboxes.find_by!(inbox_id: inbox_id).source_id
@@ -47,11 +47,15 @@ class Contact < ApplicationRecord
 
   def push_event_data
     {
+      additional_attributes: additional_attributes,
+      email: email,
       id: id,
+      identifier: identifier,
       name: name,
+      phone_number: phone_number,
+      pubsub_token: pubsub_token,
       thumbnail: avatar_url,
-      type: 'contact',
-      pubsub_token: pubsub_token
+      type: 'contact'
     }
   end
 
@@ -64,11 +68,11 @@ class Contact < ApplicationRecord
     }
   end
 
-  def downcase_email
+  def prepare_email_attribute
+    # So that the db unique constraint won't throw error when email is ''
+    self.email = nil if email.blank?
     email.downcase! if email.present?
   end
-
-  private
 
   def dispatch_create_event
     Rails.configuration.dispatcher.dispatch(CONTACT_CREATED, Time.zone.now, contact: self)

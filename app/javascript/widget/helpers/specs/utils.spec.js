@@ -1,26 +1,42 @@
-import { getAvailableAgentsText } from '../utils';
+import { IFrameHelper } from '../utils';
 
-describe('#getAvailableAgentsText', () => {
-  it('returns the correct text is there is only one online agent', () => {
-    expect(getAvailableAgentsText([{ name: 'Pranav' }])).toEqual(
-      'Pranav is available'
-    );
+jest.mock('vue', () => ({
+  config: {
+    lang: 'el',
+  },
+}));
+
+describe('#IFrameHelper', () => {
+  describe('#isAValidEvent', () => {
+    it('returns if the event is valid', () => {
+      expect(
+        IFrameHelper.isAValidEvent({
+          data:
+            'chatwoot-widget:{"event":"config-set","locale":"fr","position":"left","hideMessageBubble":false,"showPopoutButton":true}',
+        })
+      ).toEqual(true);
+      expect(
+        IFrameHelper.isAValidEvent({
+          data:
+            '{"event":"config-set","locale":"fr","position":"left","hideMessageBubble":false,"showPopoutButton":true}',
+        })
+      ).toEqual(false);
+    });
   });
-
-  it('returns the correct text is there are two online agents', () => {
-    expect(
-      getAvailableAgentsText([{ name: 'Pranav' }, { name: 'Nithin' }])
-    ).toEqual('Pranav and Nithin are available');
-  });
-
-  it('returns the correct text is there are more than two online agents', () => {
-    expect(
-      getAvailableAgentsText([
-        { name: 'Pranav' },
-        { name: 'Nithin' },
-        { name: 'Subin' },
-        { name: 'Sojan' },
-      ])
-    ).toEqual('Pranav and 3 others are available');
+  describe('#getMessage', () => {
+    it('returns parsed message', () => {
+      expect(
+        IFrameHelper.getMessage({
+          data:
+            'chatwoot-widget:{"event":"config-set","locale":"fr","position":"left","hideMessageBubble":false,"showPopoutButton":true}',
+        })
+      ).toEqual({
+        event: 'config-set',
+        locale: 'fr',
+        position: 'left',
+        hideMessageBubble: false,
+        showPopoutButton: true,
+      });
+    });
   });
 });

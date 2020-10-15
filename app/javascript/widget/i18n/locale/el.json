@@ -1,14 +1,27 @@
 {
   "COMPONENTS": {
     "FILE_BUBBLE": {
-      "DOWNLOAD": "Κατεβάστε",
-      "UPLOADING": "Μεταφόρτωση..."
+      "DOWNLOAD": "Κατέβασμα",
+      "UPLOADING": "Ανέβασμα..."
     },
     "FORM_BUBBLE": {
-      "SUBMIT": "υποβάλλουν"
+      "SUBMIT": "Καταχώρηση"
     }
   },
-  "POWERED_BY": "Με την υποστήριξη του Chatwoot",
-  "EMAIL_PLACEHOLDER": "Εισαγάγετε το email σας",
+  "AGENT_AVAILABILITY": {
+    "IS_AVAILABLE": "είναι διαθέσιμος",
+    "ARE_AVAILABLE": "είναι διαθέσιμοι",
+    "OTHERS_ARE_AVAILABLE": "άλλοι είναι διαθέσιμοι",
+    "AND": "και"
+  },
+  "UNREAD_VIEW": {
+    "VIEW_MESSAGES_BUTTON": "Δείτε τα νέα μηνύματα",
+    "CLOSE_MESSAGES_BUTTON": "Κλείσιμο"
+  },
+  "BUBBLE": {
+    "LABEL": "Συνομιλήστε μαζί μας"
+  },
+  "POWERED_BY": "με την δύναμη του Chatwoot",
+  "EMAIL_PLACEHOLDER": "Παρακαλώ εισάγετε το email σας",
   "CHAT_PLACEHOLDER": "Πληκτρολογήστε το μήνυμά σας"
 }

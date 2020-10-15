@@ -17,7 +17,32 @@ RSpec.describe Conversation, type: :model do
 
     it 'creates a UUID for every conversation automatically' do
       uuid_pattern = /[0-9a-f]{8}\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\b[0-9a-f]{12}$/i
-      expect(conversation.uuid).to  match(uuid_pattern)
+      expect(conversation.uuid).to match(uuid_pattern)
+    end
+  end
+
+  describe '.after_create' do
+    let(:account) { create(:account) }
+    let(:agent) { create(:user, email: 'agent1@example.com', account: account) }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:conversation) do
+      create(
+        :conversation,
+        account: account,
+        contact: create(:contact, account: account),
+        inbox: inbox,
+        assignee: nil
+      )
+    end
+
+    before do
+      allow(Rails.configuration.dispatcher).to receive(:dispatch)
+    end
+
+    it 'runs after_create callbacks' do
+      # send_events
+      expect(Rails.configuration.dispatcher).to have_received(:dispatch)
+        .with(described_class::CONVERSATION_CREATED, kind_of(Time), conversation: conversation)
     end
   end
 
@@ -44,7 +69,7 @@ RSpec.describe Conversation, type: :model do
       conversation.update(
         status: :resolved,
         locked: true,
-        user_last_seen_at: Time.now,
+        contact_last_seen_at: Time.now,
         assignee: new_assignee
       )
     end
@@ -63,12 +88,12 @@ RSpec.describe Conversation, type: :model do
 
     it 'creates conversation activities' do
       # create_activity
-      expect(conversation.messages.pluck(:content)).to include("Conversation was marked resolved by #{old_assignee.name}")
-      expect(conversation.messages.pluck(:content)).to include("Assigned to #{new_assignee.name} by #{old_assignee.name}")
+      expect(conversation.messages.pluck(:content)).to include("Conversation was marked resolved by #{old_assignee.available_name}")
+      expect(conversation.messages.pluck(:content)).to include("Assigned to #{new_assignee.available_name} by #{old_assignee.available_name}")
     end
   end
 
-  describe '.after_create' do
+  describe '#round robin' do
     let(:account) { create(:account) }
     let(:agent) { create(:user, email: 'agent1@example.com', account: account) }
     let(:inbox) { create(:inbox, account: account) }
@@ -83,15 +108,11 @@ RSpec.describe Conversation, type: :model do
     end
 
     before do
-      allow(Rails.configuration.dispatcher).to receive(:dispatch)
+      create(:inbox_member, inbox: inbox, user: agent)
       allow(Redis::Alfred).to receive(:rpoplpush).and_return(agent.id)
     end
 
-    it 'runs after_create callbacks' do
-      # send_events
-      expect(Rails.configuration.dispatcher).to have_received(:dispatch)
-        .with(described_class::CONVERSATION_CREATED, kind_of(Time), conversation: conversation)
-
+    it 'runs round robin on after_save callbacks' do
       # run_round_robin
       expect(conversation.reload.assignee).to eq(agent)
     end
@@ -99,12 +120,37 @@ RSpec.describe Conversation, type: :model do
     it 'will not auto assign agent if enable_auto_assignment is false' do
       inbox.update(enable_auto_assignment: false)
 
-      # send_events
-      expect(Rails.configuration.dispatcher).to have_received(:dispatch)
-        .with(described_class::CONVERSATION_CREATED, kind_of(Time), conversation: conversation)
+      # run_round_robin
+      expect(conversation.reload.assignee).to eq(nil)
+    end
+
+    it 'will not auto assign agent if its a bot conversation' do
+      conversation = create(
+        :conversation,
+        account: account,
+        contact: create(:contact, account: account),
+        inbox: inbox,
+        status: 'bot',
+        assignee: nil
+      )
 
       # run_round_robin
       expect(conversation.reload.assignee).to eq(nil)
+    end
+
+    it 'gets triggered on update only when status changes to open' do
+      conversation.status = 'resolved'
+      conversation.save!
+      expect(conversation.reload.assignee).to eq(agent)
+      inbox.inbox_members.where(user_id: agent.id).first.destroy!
+
+      # round robin changes assignee in this case since agent doesn't have access to inbox
+      agent2 = create(:user, email: 'agent2@example.com', account: account)
+      create(:inbox_member, inbox: inbox, user: agent2)
+      allow(Redis::Alfred).to receive(:rpoplpush).and_return(agent2.id)
+      conversation.status = 'open'
+      conversation.save!
+      expect(conversation.reload.assignee).to eq(agent2)
     end
   end
 
@@ -171,6 +217,37 @@ RSpec.describe Conversation, type: :model do
     end
   end
 
+  describe '#mute!' do
+    subject(:mute!) { conversation.mute! }
+
+    let(:conversation) { create(:conversation) }
+
+    it 'marks conversation as resolved' do
+      mute!
+      expect(conversation.reload.resolved?).to eq(true)
+    end
+
+    it 'marks conversation as muted in redis' do
+      mute!
+      expect(Redis::Alfred.get(conversation.send(:mute_key))).not_to eq(nil)
+    end
+  end
+
+  describe '#muted?' do
+    subject(:muted?) { conversation.muted? }
+
+    let(:conversation) { create(:conversation) }
+
+    it 'return true if conversation is muted' do
+      conversation.mute!
+      expect(muted?).to eq(true)
+    end
+
+    it 'returns false if conversation is not muted' do
+      expect(muted?).to eq(false)
+    end
+  end
+
   describe 'unread_messages' do
     subject(:unread_messages) { conversation.unread_messages }
 
@@ -180,7 +257,7 @@ RSpec.describe Conversation, type: :model do
         conversation: conversation,
         account: conversation.account,
         inbox: conversation.inbox,
-        user: conversation.assignee
+        sender: conversation.assignee
       }
     end
     let!(:message) do
@@ -205,7 +282,7 @@ RSpec.describe Conversation, type: :model do
         conversation: conversation,
         account: conversation.account,
         inbox: conversation.inbox,
-        user: conversation.assignee,
+        sender: conversation.assignee,
         created_at: 1.minute.ago
       }
     end
@@ -238,7 +315,9 @@ RSpec.describe Conversation, type: :model do
         inbox_id: conversation.inbox_id,
         status: conversation.status,
         timestamp: conversation.created_at.to_i,
-        user_last_seen_at: conversation.user_last_seen_at.to_i,
+        can_reply: true,
+        channel: 'Channel::WebWidget',
+        contact_last_seen_at: conversation.contact_last_seen_at.to_i,
         agent_last_seen_at: conversation.agent_last_seen_at.to_i,
         unread_count: 0
       }
@@ -267,6 +346,47 @@ RSpec.describe Conversation, type: :model do
 
     it 'returns conversation status as bot' do
       expect(conversation.status).to eq('bot')
+    end
+  end
+
+  describe '#can_reply?' do
+    describe 'on channels without 24 hour restriction' do
+      let(:conversation) { create(:conversation) }
+
+      it 'returns true' do
+        expect(conversation.can_reply?).to eq true
+      end
+    end
+
+    describe 'on channels with 24 hour restriction' do
+      let!(:facebook_channel) { create(:channel_facebook_page) }
+      let!(:facebook_inbox) { create(:inbox, channel: facebook_channel, account: facebook_channel.account) }
+      let!(:conversation) { create(:conversation, inbox: facebook_inbox, account: facebook_channel.account) }
+
+      it 'returns false if there are no incoming messages' do
+        expect(conversation.can_reply?).to eq false
+      end
+
+      it 'return false if last incoming message is outside of 24 hour window' do
+        create(
+          :message,
+          account: conversation.account,
+          inbox: facebook_inbox,
+          conversation: conversation,
+          created_at: Time.now - 25.hours
+        )
+        expect(conversation.can_reply?).to eq false
+      end
+
+      it 'return true if last incoming message is inside 24 hour window' do
+        create(
+          :message,
+          account: conversation.account,
+          inbox: facebook_inbox,
+          conversation: conversation
+        )
+        expect(conversation.can_reply?).to eq true
+      end
     end
   end
 end

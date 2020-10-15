@@ -46,9 +46,18 @@
           "TITLE": "Confirmar eliminación",
           "MESSAGE": "¿Está seguro de eliminar ",
           "YES": "Sí, eliminar ",
-          "NO": "No, mantenerlo "
+          "NO": "No, mantenerlo"
         }
       }
+    },
+    "DELETE": {
+      "BUTTON_TEXT": "Eliminar",
+      "API": {
+        "SUCCESS_MESSAGE": "Integración eliminada correctamente"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "Conectar"
     }
   }
 }

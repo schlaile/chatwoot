@@ -46,9 +46,18 @@
           "TITLE": "Підтвердження видалення",
           "MESSAGE": "Справді бажаєте видалити ",
           "YES": "Так, видалити ",
-          "NO": "Ні, залиште "
+          "NO": "Ні, залиште"
         }
       }
+    },
+    "DELETE": {
+      "BUTTON_TEXT": "Видалити",
+      "API": {
+        "SUCCESS_MESSAGE": "Integration deleted successfully"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "Connect"
     }
   }
 }

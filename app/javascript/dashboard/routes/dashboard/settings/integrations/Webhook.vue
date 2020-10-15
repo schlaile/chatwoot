@@ -55,7 +55,14 @@
       </div>
 
       <div class="small-4 columns">
-        <span v-html="$t('INTEGRATION_SETTINGS.WEBHOOK.SIDEBAR_TXT')"></span>
+        <span
+          v-html="
+            useInstallationName(
+              $t('INTEGRATION_SETTINGS.WEBHOOK.SIDEBAR_TXT'),
+              globalConfig.installationName
+            )
+          "
+        />
       </div>
     </div>
 
@@ -63,7 +70,7 @@
       <new-webhook :on-close="hideAddPopup" />
     </woot-modal>
 
-    <delete-webhook
+    <woot-delete-modal
       :show.sync="showDeleteConfirmationPopup"
       :on-close="closeDeletePopup"
       :on-confirm="confirmDeletion"
@@ -75,16 +82,16 @@
   </div>
 </template>
 <script>
-/* global bus */
 import { mapGetters } from 'vuex';
 import NewWebhook from './New';
-import DeleteWebhook from './Delete';
+import alertMixin from 'shared/mixins/alertMixin';
+import globalConfigMixin from 'shared/mixins/globalConfigMixin';
 
 export default {
   components: {
     NewWebhook,
-    DeleteWebhook,
   },
+  mixins: [alertMixin, globalConfigMixin],
   data() {
     return {
       loading: {},
@@ -97,15 +104,13 @@ export default {
     ...mapGetters({
       records: 'webhooks/getWebhooks',
       uiFlags: 'webhooks/getUIFlags',
+      globalConfig: 'globalConfig/get',
     }),
   },
   mounted() {
     this.$store.dispatch('webhooks/get');
   },
   methods: {
-    showAlert(message) {
-      bus.$emit('newToastMessage', message);
-    },
     openAddPopup() {
       this.showAddPopup = true;
     },

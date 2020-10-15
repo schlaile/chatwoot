@@ -13,10 +13,14 @@ const sendAttachmentAPI = async attachment => {
   return result;
 };
 
-const getConversationAPI = async ({ before }) => {
+const getMessagesAPI = async ({ before }) => {
   const urlData = endPoints.getConversation({ before });
   const result = await API.get(urlData.url, { params: urlData.params });
   return result;
+};
+
+const getConversationAPI = async () => {
+  return API.get(`/api/v1/widget/conversations${window.location.search}`);
 };
 
 const toggleTyping = async ({ typingStatus }) => {
@@ -26,4 +30,18 @@ const toggleTyping = async ({ typingStatus }) => {
   );
 };
 
-export { sendMessageAPI, getConversationAPI, sendAttachmentAPI, toggleTyping };
+const setUserLastSeenAt = async ({ lastSeen }) => {
+  return API.post(
+    `/api/v1/widget/conversations/update_last_seen${window.location.search}`,
+    { contact_last_seen_at: lastSeen }
+  );
+};
+
+export {
+  sendMessageAPI,
+  getConversationAPI,
+  getMessagesAPI,
+  sendAttachmentAPI,
+  toggleTyping,
+  setUserLastSeenAt,
+};

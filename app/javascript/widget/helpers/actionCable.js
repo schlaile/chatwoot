@@ -8,15 +8,28 @@ class ActionCableConnector extends BaseActionCableConnector {
       'message.updated': this.onMessageUpdated,
       'conversation.typing_on': this.onTypingOn,
       'conversation.typing_off': this.onTypingOff,
+      'conversation.resolved': this.onStatusChange,
+      'conversation.opened': this.onStatusChange,
+      'presence.update': this.onPresenceUpdate,
     };
   }
 
+  onStatusChange = data => {
+    this.app.$store.dispatch('conversationAttributes/update', data);
+  };
+
   onMessageCreated = data => {
-    this.app.$store.dispatch('conversation/addMessage', data);
+    this.app.$store.dispatch('conversation/addMessage', data).then(() => {
+      window.bus.$emit('on-agent-message-recieved');
+    });
   };
 
   onMessageUpdated = data => {
     this.app.$store.dispatch('conversation/updateMessage', data);
+  };
+
+  onPresenceUpdate = data => {
+    this.app.$store.dispatch('agent/updatePresence', data.users);
   };
 
   onTypingOn = () => {
@@ -50,7 +63,7 @@ class ActionCableConnector extends BaseActionCableConnector {
 }
 
 export const refreshActionCableConnector = pubsubToken => {
-  if (!pubsubToken) {
+  if (!pubsubToken || window.chatwootPubsubToken === pubsubToken) {
     return;
   }
   window.chatwootPubsubToken = pubsubToken;

@@ -1,5 +1,9 @@
 # DO NOT change the order of features EVER
 - name: inbound_emails
   enabled: false
-- name: test
+- name: channel_email
   enabled: false
+- name: channel_facebook
+  enabled: true
+- name: channel_twitter
+  enabled: true

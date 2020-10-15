@@ -2,24 +2,26 @@
   <div class="medium-12 column login">
     <div class="text-center medium-12 login__hero align-self-top">
       <img
-        src="~dashboard/assets/images/woot-logo.svg"
-        alt="Woot-logo"
+        :src="globalConfig.logo"
+        :alt="globalConfig.installationName"
         class="hero__logo"
       />
       <h2 class="hero__title">
-        {{ $t('LOGIN.TITLE') }}
+        {{
+          useInstallationName($t('LOGIN.TITLE'), globalConfig.installationName)
+        }}
       </h2>
     </div>
     <div class="row align-center">
       <div class="small-12 medium-4 column">
         <form class="login-box column align-self-top" @submit.prevent="login()">
           <div class="column log-in-form">
-            <!-- <h4 class="text-center">{{$t('LOGIN.TITLE')}}</h4> -->
             <label :class="{ error: $v.credentials.email.$error }">
               {{ $t('LOGIN.EMAIL.LABEL') }}
               <input
                 v-model.trim="credentials.email"
                 type="text"
+                data-testid="email_input"
                 :placeholder="$t('LOGIN.EMAIL.PLACEHOLDER')"
                 @input="$v.credentials.email.$touch"
               />
@@ -29,6 +31,7 @@
               <input
                 v-model.trim="credentials.password"
                 type="password"
+                data-testid="password_input"
                 :placeholder="$t('LOGIN.PASSWORD.PLACEHOLDER')"
                 @input="$v.credentials.password.$touch"
               />
@@ -68,14 +71,15 @@
 /* global bus */
 
 import { required, email } from 'vuelidate/lib/validators';
-
+import globalConfigMixin from 'shared/mixins/globalConfigMixin';
 import WootSubmitButton from '../../components/buttons/FormSubmitButton';
-// import router from '../../routes';
+import { mapGetters } from 'vuex';
 
 export default {
   components: {
     WootSubmitButton,
   },
+  mixins: [globalConfigMixin],
   data() {
     return {
       // We need to initialize the component with any
@@ -101,6 +105,11 @@ export default {
         email,
       },
     },
+  },
+  computed: {
+    ...mapGetters({
+      globalConfig: 'globalConfig/get',
+    }),
   },
   methods: {
     showAlert(message) {

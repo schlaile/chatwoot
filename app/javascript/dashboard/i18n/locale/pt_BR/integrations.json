@@ -46,9 +46,18 @@
           "TITLE": "Confirmar exclusão",
           "MESSAGE": "Você tem certeza que deseja excluir ",
           "YES": "Sim, excluir ",
-          "NO": "Não, mantenha "
+          "NO": "Não, mantenha"
         }
       }
+    },
+    "DELETE": {
+      "BUTTON_TEXT": "Excluir",
+      "API": {
+        "SUCCESS_MESSAGE": "Integração excluída com sucesso"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "Conectar"
     }
   }
 }

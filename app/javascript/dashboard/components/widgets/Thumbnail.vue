@@ -21,11 +21,6 @@
       :style="badgeStyle"
       src="~dashboard/assets/images/fb-badge.png"
     />
-    <div
-      v-else-if="status === 'online'"
-      class="source-badge user--online"
-      :style="statusStyle"
-    ></div>
     <img
       v-if="badge === 'Channel::TwitterProfile'"
       id="badge"
@@ -33,13 +28,17 @@
       :style="badgeStyle"
       src="~dashboard/assets/images/twitter-badge.png"
     />
-
     <img
       v-if="badge === 'Channel::TwilioSms'"
       id="badge"
       class="source-badge"
       :style="badgeStyle"
       src="~dashboard/assets/images/channels/whatsapp.png"
+    />
+    <div
+      v-if="showStatusIndicator"
+      :class="`source-badge user-online-status user-online-status--${status}`"
+      :style="statusStyle"
     />
   </div>
 </template>
@@ -89,6 +88,9 @@ export default {
     };
   },
   computed: {
+    showStatusIndicator() {
+      return this.status === 'online' || this.status === 'busy';
+    },
     avatarSize() {
       return Number(this.size.replace(/\D+/g, ''));
     },
@@ -103,6 +105,15 @@ export default {
     thumbnailClass() {
       const classname = this.hasBorder ? 'border' : '';
       return `user-thumbnail ${classname}`;
+    },
+  },
+  watch: {
+    src: {
+      handler(value, oldValue) {
+        if (value !== oldValue && this.imgError) {
+          this.imgError = false;
+        }
+      },
     },
   },
   methods: {
@@ -141,14 +152,21 @@ export default {
     width: $space-slab;
   }
 
-  .user--online {
-    background: $success-color;
+  .user-online-status {
     border-radius: 50%;
     bottom: $space-micro;
 
     &:after {
       content: ' ';
     }
+  }
+
+  .user-online-status--online {
+    background: $success-color;
+  }
+
+  .user-online-status--busy {
+    background: $warning-color;
   }
 }
 </style>

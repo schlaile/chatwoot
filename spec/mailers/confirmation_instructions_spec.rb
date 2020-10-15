@@ -27,9 +27,11 @@ RSpec.describe 'Confirmation Instructions', type: :mailer do
       let(:inviter_val) { create(:user, :administrator, skip_confirmation: true, account: account) }
 
       it 'refers to the inviter and their account' do
+        Current.account = account
         expect(mail.body).to match(
           "#{CGI.escapeHTML(inviter_val.name)}, with #{CGI.escapeHTML(inviter_val.account.name)}, has invited you to try out Chatwoot!"
         )
+        Current.account = nil
       end
     end
   end

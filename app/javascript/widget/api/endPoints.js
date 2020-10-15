@@ -1,13 +1,19 @@
-const sendMessage = content => ({
-  url: `/api/v1/widget/messages${window.location.search}`,
-  params: {
-    message: {
-      content,
-      timestamp: new Date().toString(),
-      referer_url: window.refererURL || '',
+import { buildSearchParamsWithLocale } from '../helpers/urlParamsHelper';
+
+const sendMessage = content => {
+  const refererURL = window.refererURL || '';
+  const search = buildSearchParamsWithLocale(window.location.search);
+  return {
+    url: `/api/v1/widget/messages${search}`,
+    params: {
+      message: {
+        content,
+        timestamp: new Date().toString(),
+        referer_url: refererURL,
+      },
     },
-  },
-});
+  };
+};
 
 const sendAttachment = ({ attachment }) => {
   const { refererURL = '' } = window;

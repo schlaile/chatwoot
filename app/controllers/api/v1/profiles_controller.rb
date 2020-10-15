@@ -2,7 +2,7 @@ class Api::V1::ProfilesController < Api::BaseController
   before_action :set_user
 
   def show
-    render json: @user
+    render partial: 'api/v1/models/user.json.jbuilder', locals: { resource: @user }
   end
 
   def update
@@ -16,6 +16,14 @@ class Api::V1::ProfilesController < Api::BaseController
   end
 
   def profile_params
-    params.require(:profile).permit(:email, :name, :password, :password_confirmation, :avatar)
+    params.require(:profile).permit(
+      :email,
+      :name,
+      :display_name,
+      :password,
+      :password_confirmation,
+      :avatar,
+      :availability
+    )
   end
 end

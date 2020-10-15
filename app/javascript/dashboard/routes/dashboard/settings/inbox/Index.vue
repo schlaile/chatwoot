@@ -6,7 +6,7 @@
         <p v-if="!inboxesList.length" class="no-items-error-message">
           {{ $t('INBOX_MGMT.LIST.404') }}
           <router-link
-            v-if="isAdmin()"
+            v-if="isAdmin"
             :to="addAccountScoping('settings/inboxes/new')"
           >
             {{ $t('SETTINGS.INBOXES.NEW_INBOX') }}
@@ -45,6 +45,12 @@
                 <span v-if="item.channel_type === 'Channel::TwilioSms'">
                   Twilio SMS
                 </span>
+                <span v-if="item.channel_type === 'Channel::Email'">
+                  Email
+                </span>
+                <span v-if="item.channel_type === 'Channel::Api'">
+                  Api
+                </span>
               </td>
 
               <!-- Action Buttons -->
@@ -54,7 +60,7 @@
                     :to="addAccountScoping(`settings/inboxes/${item.id}`)"
                   >
                     <woot-submit-button
-                      v-if="isAdmin()"
+                      v-if="isAdmin"
                       :button-text="$t('INBOX_MGMT.SETTINGS')"
                       icon-class="ion-gear-b"
                       button-class="link hollow grey-btn"
@@ -62,7 +68,7 @@
                   </router-link>
 
                   <woot-submit-button
-                    v-if="isAdmin()"
+                    v-if="isAdmin"
                     :button-text="$t('INBOX_MGMT.DELETE.BUTTON_TEXT')"
                     :loading="loading[item.id]"
                     icon-class="ion-close-circled"
@@ -77,7 +83,14 @@
       </div>
 
       <div class="small-4 columns">
-        <span v-html="$t('INBOX_MGMT.SIDEBAR_TXT')"></span>
+        <span
+          v-html="
+            useInstallationName(
+              $t('INBOX_MGMT.SIDEBAR_TXT'),
+              globalConfig.installationName
+            )
+          "
+        />
       </div>
     </div>
     <settings
@@ -87,7 +100,7 @@
       :inbox="selectedInbox"
     />
 
-    <delete-inbox
+    <woot-delete-modal
       :show.sync="showDeletePopup"
       :on-close="closeDelete"
       :on-confirm="confirmDeletion"
@@ -103,17 +116,15 @@
 
 import { mapGetters } from 'vuex';
 import Settings from './Settings';
-import DeleteInbox from './DeleteInbox';
 import adminMixin from '../../../../mixins/isAdmin';
-import auth from '../../../../api/auth';
 import accountMixin from '../../../../mixins/account';
+import globalConfigMixin from 'shared/mixins/globalConfigMixin';
 
 export default {
   components: {
     Settings,
-    DeleteInbox,
   },
-  mixins: [adminMixin, accountMixin],
+  mixins: [adminMixin, accountMixin, globalConfigMixin],
   data() {
     return {
       loading: {},
@@ -125,6 +136,7 @@ export default {
   computed: {
     ...mapGetters({
       inboxesList: 'inboxes/getInboxes',
+      globalConfig: 'globalConfig/get',
     }),
     // Delete Modal
     deleteConfirmText() {
@@ -141,9 +153,6 @@ export default {
       return `${this.$t('INBOX_MGMT.DELETE.CONFIRM.MESSAGE')} ${
         this.selectedInbox.name
       } ?`;
-    },
-    accountId() {
-      return auth.getCurrentUser().account_id;
     },
   },
   methods: {

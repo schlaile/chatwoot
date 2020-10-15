@@ -9,17 +9,11 @@
           <p>{{ $t('PROFILE_SETTINGS.FORM.PROFILE_SECTION.NOTE') }}</p>
         </div>
         <div class="columns small-9 medium-5">
-          <label>
-            {{ $t('PROFILE_SETTINGS.FORM.PROFILE_IMAGE.LABEL') }}
-            <thumbnail size="80px" :src="avatarUrl"></thumbnail>
-            <input
-              id="file"
-              ref="file"
-              type="file"
-              accept="image/*"
-              @change="handleImageUpload"
-            />
-          </label>
+          <woot-avatar-uploader
+            :label="$t('PROFILE_SETTINGS.FORM.PROFILE_IMAGE.LABEL')"
+            :src="avatarUrl"
+            @change="handleImageUpload"
+          />
           <label :class="{ error: $v.name.$error }">
             {{ $t('PROFILE_SETTINGS.FORM.NAME.LABEL') }}
             <input
@@ -32,6 +26,17 @@
               {{ $t('PROFILE_SETTINGS.FORM.NAME.ERROR') }}
             </span>
           </label>
+          <label :class="{ error: $v.displayName.$error }">
+            {{ $t('PROFILE_SETTINGS.FORM.DISPLAY_NAME.LABEL') }}
+            <input
+              v-model="displayName"
+              type="text"
+              :placeholder="
+                $t('PROFILE_SETTINGS.FORM.DISPLAY_NAME.PLACEHOLDER')
+              "
+              @input="$v.displayName.$touch"
+            />
+          </label>
           <label :class="{ error: $v.email.$error }">
             {{ $t('PROFILE_SETTINGS.FORM.EMAIL.LABEL') }}
             <input
@@ -43,6 +48,21 @@
             <span v-if="$v.email.$error" class="message">
               {{ $t('PROFILE_SETTINGS.FORM.EMAIL.ERROR') }}
             </span>
+          </label>
+          <label>
+            {{ $t('PROFILE_SETTINGS.FORM.AVAILABILITY.LABEL') }}
+            <select v-model="availability">
+              <option
+                v-for="status in $t(
+                  'PROFILE_SETTINGS.FORM.AVAILABILITY.STATUSES_LIST'
+                )"
+                :key="status.key"
+                class="text-capitalize"
+                :value="status.value"
+              >
+                {{ status.label }}
+              </option>
+            </select>
           </label>
         </div>
       </div>
@@ -105,27 +125,27 @@
 </template>
 
 <script>
-/* global bus */
-
-import Thumbnail from 'dashboard/components/widgets/Thumbnail.vue';
 import { required, minLength, email } from 'vuelidate/lib/validators';
 import { mapGetters } from 'vuex';
 import { clearCookiesOnLogout } from '../../../../store/utils/api';
 import NotificationSettings from './NotificationSettings';
+import alertMixin from 'shared/mixins/alertMixin';
 
 export default {
   components: {
     NotificationSettings,
-    Thumbnail,
   },
+  mixin: [alertMixin],
   data() {
     return {
       avatarFile: '',
       avatarUrl: '',
       name: '',
+      displayName: '',
       email: '',
       password: '',
       passwordConfirmation: '',
+      availability: 'online',
       isUpdating: false,
     };
   },
@@ -133,6 +153,7 @@ export default {
     name: {
       required,
     },
+    displayName: {},
     email: {
       required,
       email,
@@ -154,12 +175,18 @@ export default {
     ...mapGetters({
       currentUser: 'getCurrentUser',
       currentUserId: 'getCurrentUserID',
+      currentAvailabilityStatus: 'getCurrentUserAvailabilityStatus',
     }),
   },
   watch: {
     currentUserId(newCurrentUserId, prevCurrentUserId) {
       if (prevCurrentUserId !== newCurrentUserId) {
         this.initializeUser();
+      }
+    },
+    currentAvailabilityStatus(newStatus, oldStatus) {
+      if (newStatus !== oldStatus) {
+        this.availability = newStatus;
       }
     },
   },
@@ -173,11 +200,13 @@ export default {
       this.name = this.currentUser.name;
       this.email = this.currentUser.email;
       this.avatarUrl = this.currentUser.avatar_url;
+      this.availability = this.currentUser.availability_status;
+      this.displayName = this.currentUser.display_name;
     },
     async updateUser() {
       this.$v.$touch();
       if (this.$v.$invalid) {
-        bus.$emit('newToastMessage', this.$t('PROFILE_SETTINGS.FORM.ERROR'));
+        this.showAlert(this.$t('PROFILE_SETTINGS.FORM.ERROR'));
         return;
       }
       this.isUpdating = true;
@@ -188,24 +217,22 @@ export default {
           email: this.email,
           avatar: this.avatarFile,
           password: this.password,
+          displayName: this.displayName,
+          availability: this.availability,
           password_confirmation: this.passwordConfirmation,
         });
         this.isUpdating = false;
         if (hasEmailChanged) {
           clearCookiesOnLogout();
-          bus.$emit(
-            'newToastMessage',
-            this.$t('PROFILE_SETTINGS.AFTER_EMAIL_CHANGED')
-          );
+          this.showAlert(this.$t('PROFILE_SETTINGS.AFTER_EMAIL_CHANGED'));
         }
       } catch (error) {
         this.isUpdating = false;
       }
     },
-    handleImageUpload(event) {
-      const [file] = event.target.files;
+    handleImageUpload({ file, url }) {
       this.avatarFile = file;
-      this.avatarUrl = URL.createObjectURL(file);
+      this.avatarUrl = url;
     },
   },
 };

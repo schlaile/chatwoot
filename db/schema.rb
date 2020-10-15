@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_05_04_144712) do
+ActiveRecord::Schema.define(version: 2020_09_07_094912) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -33,6 +33,7 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.bigint "inviter_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.datetime "active_at"
     t.index ["account_id", "user_id"], name: "uniq_user_id_per_account_id", unique: true
     t.index ["account_id"], name: "index_account_users_on_account_id"
     t.index ["user_id"], name: "index_account_users_on_user_id"
@@ -94,6 +95,7 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.string "outgoing_url"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.boolean "hide_input_for_bot_conversations", default: false
   end
 
   create_table "attachments", id: :serial, force: :cascade do |t|
@@ -115,6 +117,23 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.text "content"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "channel_api", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.string "webhook_url", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+  end
+
+  create_table "channel_email", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.string "email", null: false
+    t.string "forward_to_address", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["email"], name: "index_channel_email_on_email", unique: true
+    t.index ["forward_to_address"], name: "index_channel_email_on_forward_to_address", unique: true
   end
 
   create_table "channel_facebook_pages", id: :serial, force: :cascade do |t|
@@ -158,7 +177,7 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.string "widget_color", default: "#1f93ff"
     t.string "welcome_title"
     t.string "welcome_tagline"
-    t.string "agent_away_message"
+    t.integer "feature_flags", default: 3, null: false
     t.index ["website_token"], name: "index_channel_web_widgets_on_website_token", unique: true
   end
 
@@ -184,6 +203,7 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.string "pubsub_token"
     t.jsonb "additional_attributes"
     t.string "identifier"
+    t.jsonb "custom_attributes", default: {}
     t.index ["account_id"], name: "index_contacts_on_account_id"
     t.index ["email", "account_id"], name: "uniq_email_per_account_contact", unique: true
     t.index ["identifier", "account_id"], name: "uniq_identifier_per_account_contact", unique: true
@@ -199,15 +219,27 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.datetime "updated_at", null: false
     t.bigint "contact_id"
     t.integer "display_id", null: false
-    t.datetime "user_last_seen_at"
+    t.datetime "contact_last_seen_at"
     t.datetime "agent_last_seen_at"
     t.boolean "locked", default: false
     t.jsonb "additional_attributes"
     t.bigint "contact_inbox_id"
     t.uuid "uuid", default: -> { "gen_random_uuid()" }, null: false
+    t.string "identifier"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["contact_inbox_id"], name: "index_conversations_on_contact_inbox_id"
+  end
+
+  create_table "email_templates", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "body", null: false
+    t.integer "account_id"
+    t.integer "template_type", default: 1
+    t.integer "locale", default: 0, null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["name", "account_id"], name: "index_email_templates_on_name_and_account_id", unique: true
   end
 
   create_table "events", force: :cascade do |t|
@@ -242,7 +274,42 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.datetime "updated_at", null: false
     t.string "channel_type"
     t.boolean "enable_auto_assignment", default: true
+    t.boolean "greeting_enabled", default: false
+    t.string "greeting_message"
     t.index ["account_id"], name: "index_inboxes_on_account_id"
+  end
+
+  create_table "installation_configs", force: :cascade do |t|
+    t.string "name", null: false
+    t.jsonb "serialized_value", default: "{}", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["name", "created_at"], name: "index_installation_configs_on_name_and_created_at", unique: true
+  end
+
+  create_table "integrations_hooks", force: :cascade do |t|
+    t.integer "status", default: 0
+    t.integer "inbox_id"
+    t.integer "account_id"
+    t.string "app_id"
+    t.text "settings"
+    t.integer "hook_type", default: 0
+    t.string "reference_id"
+    t.string "access_token"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+  end
+
+  create_table "labels", force: :cascade do |t|
+    t.string "title"
+    t.text "description"
+    t.string "color", default: "#1f93ff", null: false
+    t.boolean "show_on_sidebar"
+    t.bigint "account_id"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["account_id"], name: "index_labels_on_account_id"
+    t.index ["title", "account_id"], name: "index_labels_on_title_and_account_id", unique: true
   end
 
   create_table "messages", id: :serial, force: :cascade do |t|
@@ -254,18 +321,18 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "private", default: false
-    t.integer "user_id"
     t.integer "status", default: 0
     t.string "source_id"
     t.integer "content_type", default: 0
     t.json "content_attributes", default: {}
-    t.bigint "contact_id"
+    t.string "sender_type"
+    t.bigint "sender_id"
+    t.jsonb "external_source_ids", default: {}
     t.index ["account_id"], name: "index_messages_on_account_id"
-    t.index ["contact_id"], name: "index_messages_on_contact_id"
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
     t.index ["inbox_id"], name: "index_messages_on_inbox_id"
+    t.index ["sender_type", "sender_id"], name: "index_messages_on_sender_type_and_sender_id"
     t.index ["source_id"], name: "index_messages_on_source_id"
-    t.index ["user_id"], name: "index_messages_on_user_id"
   end
 
   create_table "notification_settings", force: :cascade do |t|
@@ -306,18 +373,6 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
-  create_table "subscriptions", id: :serial, force: :cascade do |t|
-    t.string "pricing_version"
-    t.integer "account_id"
-    t.datetime "expiry"
-    t.string "billing_plan", default: "trial"
-    t.string "stripe_customer_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "state", default: 0
-    t.boolean "payment_source_added", default: false
-  end
-
   create_table "super_admins", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -346,9 +401,11 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.index ["taggable_id", "taggable_type", "context"], name: "index_taggings_on_taggable_id_and_taggable_type_and_context"
     t.index ["taggable_id", "taggable_type", "tagger_id", "context"], name: "taggings_idy"
     t.index ["taggable_id"], name: "index_taggings_on_taggable_id"
+    t.index ["taggable_type", "taggable_id"], name: "index_taggings_on_taggable_type_and_taggable_id"
     t.index ["taggable_type"], name: "index_taggings_on_taggable_type"
     t.index ["tagger_id", "tagger_type"], name: "index_taggings_on_tagger_id_and_tagger_type"
     t.index ["tagger_id"], name: "index_taggings_on_tagger_id"
+    t.index ["tagger_type", "tagger_id"], name: "index_taggings_on_tagger_type_and_tagger_id"
   end
 
   create_table "tags", id: :serial, force: :cascade do |t|
@@ -382,12 +439,13 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
     t.datetime "confirmation_sent_at"
     t.string "unconfirmed_email"
     t.string "name", null: false
-    t.string "nickname"
+    t.string "display_name"
     t.string "email"
     t.json "tokens"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "pubsub_token"
+    t.integer "availability", default: 0
     t.index ["email"], name: "index_users_on_email"
     t.index ["pubsub_token"], name: "index_users_on_pubsub_token", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
@@ -410,5 +468,4 @@ ActiveRecord::Schema.define(version: 2020_05_04_144712) do
   add_foreign_key "contact_inboxes", "contacts"
   add_foreign_key "contact_inboxes", "inboxes"
   add_foreign_key "conversations", "contact_inboxes"
-  add_foreign_key "messages", "contacts"
 end

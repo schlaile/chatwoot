@@ -1,14 +1,32 @@
 <template>
   <a
+    v-if="globalConfig.brandName"
     class="branding"
-    href="https://www.chatwoot.com?utm_source=widget_branding"
+    :href="`${globalConfig.widgetBrandURL}?utm_source=widget_branding`"
     rel="noreferrer noopener nofollow"
     target="_blank"
   >
-    <img src="~widget/assets/images/logo.svg" alt="ChatwootLogo" />
-    <span>{{ $t('POWERED_BY') }}</span>
+    <img :alt="globalConfig.brandName" :src="globalConfig.logoThumbnail" />
+    <span>
+      {{ useInstallationName($t('POWERED_BY'), globalConfig.brandName) }}
+    </span>
   </a>
+  <div v-else class="brand--alternative" />
 </template>
+
+<script>
+import { mapGetters } from 'vuex';
+import globalConfigMixin from 'shared/mixins/globalConfigMixin';
+
+export default {
+  mixins: [globalConfigMixin],
+  computed: {
+    ...mapGetters({
+      globalConfig: 'globalConfig/get',
+    }),
+  },
+};
+</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
@@ -38,5 +56,8 @@
     max-width: $space-slab;
     max-height: $space-slab;
   }
+}
+.brand--alternative {
+  padding: $space-slab;
 }
 </style>

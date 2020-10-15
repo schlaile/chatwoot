@@ -1,8 +1,11 @@
 <template>
   <div class="chat-message--input">
-    <chat-input-area
+    <resizable-text-area
       v-model="userInput"
       :placeholder="$t('CHAT_PLACEHOLDER')"
+      class="form-input user-message-input"
+      @focus="onFocus"
+      @blur="onBlur"
     />
     <div class="button-wrap">
       <chat-attachment-button
@@ -15,6 +18,7 @@
         :on-click="emojiOnClick"
       />
       <i
+        v-if="hasEmojiPickerEnabled"
         class="emoji-toggle icon ion-happy-outline"
         :class="{ active: showEmojiPicker }"
         @click="toggleEmojiPicker()"
@@ -30,22 +34,22 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import emojione from 'emojione';
 import { mixin as clickaway } from 'vue-clickaway';
 import ChatSendButton from 'widget/components/ChatSendButton.vue';
 import ChatAttachmentButton from 'widget/components/ChatAttachment.vue';
-import ChatInputArea from 'widget/components/ChatInputArea.vue';
-import EmojiInput from 'dashboard/components/widgets/emoji/EmojiInput';
+import ResizableTextArea from 'shared/components/ResizableTextArea';
+import EmojiInput from 'shared/components/emoji/EmojiInput';
+import configMixin from '../mixins/configMixin';
 
 export default {
   name: 'ChatInputWrap',
   components: {
     ChatAttachmentButton,
     ChatSendButton,
-    ChatInputArea,
     EmojiInput,
+    ResizableTextArea,
   },
-  mixins: [clickaway],
+  mixins: [clickaway, configMixin],
   props: {
     onSendMessage: {
       type: Function,
@@ -69,7 +73,7 @@ export default {
       widgetColor: 'appConfig/getWidgetColor',
     }),
     showAttachment() {
-      return this.userInput.length === 0;
+      return this.hasAttachmentsEnabled && this.userInput.length === 0;
     },
     showSendButton() {
       return this.userInput.length > 0;
@@ -105,9 +109,16 @@ export default {
       }
     },
     emojiOnClick(emoji) {
-      this.userInput = emojione.shortnameToUnicode(
-        `${this.userInput}${emoji.shortname} `
-      );
+      this.userInput = `${this.userInput}${emoji} `;
+    },
+    onBlur() {
+      this.toggleTyping('off');
+    },
+    onFocus() {
+      this.toggleTyping('on');
+    },
+    toggleTyping(typingStatus) {
+      this.$store.dispatch('conversation/toggleUserTyping', { typingStatus });
     },
   },
 };
@@ -139,5 +150,14 @@ export default {
 .button-wrap {
   display: flex;
   align-items: center;
+}
+
+.user-message-input {
+  border: 0;
+  height: $space-large;
+  min-height: $space-large;
+  max-height: 2.4 * $space-mega;
+  resize: none;
+  padding-top: $space-small;
 }
 </style>

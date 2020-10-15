@@ -46,9 +46,18 @@
           "TITLE": "Confirma l'esborrat",
           "MESSAGE": "N'estàs segur ",
           "YES": "Si, esborra ",
-          "NO": "No, mantén-la "
+          "NO": "No, manten-la"
         }
       }
+    },
+    "DELETE": {
+      "BUTTON_TEXT": "Suprimeix",
+      "API": {
+        "SUCCESS_MESSAGE": "Integration deleted successfully"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "Connect"
     }
   }
 }
