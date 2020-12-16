@@ -100,6 +100,7 @@ Rails.application.configure do
 
   # Chatwoot production settings
   config.action_mailer.default_url_options = { host: ENV['FRONTEND_URL'] }
+  config.action_mailer.delivery_method = ENV.fetch('SMTP_EMAIL_SERVICE', 'smtp').to_sym
   config.action_mailer.smtp_settings = {
     address: ENV['SMTP_ADDRESS'],
     port: ENV['SMTP_PORT'] || 587,
