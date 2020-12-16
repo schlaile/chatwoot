@@ -30,15 +30,15 @@ de:
   conversations:
     activity:
       status:
-        resolved: "Das Gespräch wurde von gelöst gelöst %{user_name}"
-        open: "Das Gespräch wurde von wieder eröffnet %{user_name}"
+        resolved: "Das Gespräch wurde von %{user_name} abgeschlossen"
+        open: "Das Gespräch wurde von %{user_name} wieder eröffnet"
       assignee:
         assigned: "%{user_name} von %{assignee_name} zugewiesen"
         removed: "Gespräch nicht zugewiesen von %{user_name}"
     templates:
-      greeting_message_body: "%{account_name} Antworten in der Regel in wenigen Stunden."
+      greeting_message_body: "%{account_name} antworten in der Regel in wenigen Stunden."
       ways_to_reach_you_message_body: "Geben Sie dem Team einen Weg, Sie zu erreichen."
       email_input_box_message_body: "Lassen Sie sich per E-Mail benachrichtigen"
     reply:
-      email_subject: "New messages on this conversation"
-      transcript_subject: "Conversation Transcript"
+      email_subject: "Neue Beiträge in diesem Chat"
+      transcript_subject: "Gesprächsprotokoll"
