@@ -3,7 +3,7 @@
     "HEADER": "Agenten",
     "HEADER_BTN_TXT": "Agent hinzufügen",
     "LOADING": "Agentenliste abrufen",
-    "SIDEBAR_TXT": "<p><b>Agents</b></p> <p> An <b>Agent</b> is a member of your Customer Support team. </p><p> Agents will be able to view and reply to messages from your users. The list shows all agents currently in your account. </p><p> Click on <b>Add Agent</b> to add a new agent. Agent you add will receive an email with a confirmation link to activate their account, after which they can access Chatwoot and respond to messages. </p><p> Access to Chatwoot's features are based on following roles. </p><p> <b>Agent</b> - Agents with this role can only access inboxes, reports and conversations. They can assign conversations to other agents or themselves and resolve conversations.</p><p> <b>Administrator</b> - Administrator will have access to all Chatwoot features enabled for your account, including settings, along with all of a normal agents' privileges.</p>",
+    "SIDEBAR_TXT": "<p><b>Agenten</b></p> <p> Ein <b>Agent</b> ist ein Mitglied Ihres Kundensupport-Teams. </p><p> Agenten können Nachrichten von Ihren Benutzern einsehen und beantworten. Die Liste zeigt alle Agenten, die sich derzeit in Ihrem Konto befinden. </p><p> Klicken Sie auf <b>Agent hinzufügen</b>, um einen neuen Agenten hinzuzufügen. Der von Ihnen hinzugefügte Agent erhält eine E-Mail mit einem Bestätigungslink, um sein Konto zu aktivieren. Danach können sie auf Chatwoot zugreifen und auf Nachrichten antworten. </p><p> Der Zugang zu den Funktionen von Chatwoot basiert auf folgenden Rollen: </p><p> <b>Agent</b> - Agenten mit dieser Rolle können nur auf Posteingänge, Berichte und Konversationen zugreifen. Sie können Unterhaltungen anderen Agenten oder sich selbst zuweisen und Unterhaltungen lösen.</p><p> <b>Administrator</b> - Der Administrator hat Zugang zu allen Chatwoot-Funktionen, die für Ihr Konto aktiviert sind, einschließlich der Einstellungen, zusammen mit allen normalen Agentenrechten.</p>",
     "AGENT_TYPES": [
       {
         "name": "administrator",
@@ -28,7 +28,7 @@
     "ADD": {
       "TITLE": "Fügen Sie Ihrem Team einen Agenten hinzu",
       "DESC": "Sie können Personen hinzufügen, die die Unterstützung für Ihre Posteingänge übernehmen können.",
-      "CANCEL_BUTTON_TEXT": "Stornieren",
+      "CANCEL_BUTTON_TEXT": "Abbrechen",
       "FORM": {
         "NAME": {
           "LABEL": "Agentenname",
@@ -59,9 +59,9 @@
       },
       "CONFIRM": {
         "TITLE": "Löschung bestätigen",
-        "MESSAGE": "Bist du sicher, das du das löschen möchtest?",
+        "MESSAGE": "Sind Sie sicher, dass Sie das löschen wollen?",
         "YES": "Ja, löschen ",
-        "NO": "No, Keep "
+        "NO": "Nein, behalten "
       }
     },
     "EDIT": {
@@ -83,7 +83,7 @@
         "SUBMIT": "Agent bearbeiten"
       },
       "BUTTON_TEXT": "Bearbeiten",
-      "CANCEL_BUTTON_TEXT": "Stornieren",
+      "CANCEL_BUTTON_TEXT": "Abbrechen",
       "API": {
         "SUCCESS_MESSAGE": "Agent erfolgreich aktualisiert",
         "ERROR_MESSAGE": "Es konnte keine Verbindung zum Woot Server hergestellt werden. Bitte versuchen Sie es später erneut"

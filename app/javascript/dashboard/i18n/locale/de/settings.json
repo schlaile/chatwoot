@@ -58,15 +58,15 @@
         "STATUSES_LIST": [
           {
             "value": "online",
-            "label": "Online"
+            "label": "Angemeldet"
           },
           {
             "value": "busy",
-            "label": "Busy"
+            "label": "Beschäftigt"
           },
           {
             "value": "offline",
-            "label": "Offline"
+            "label": "Abgemeldet"
           }
         ]
       },
@@ -99,21 +99,21 @@
   },
   "COMPONENTS": {
     "CODE": {
-      "BUTTON_TEXT": "Copy",
-      "COPY_SUCCESSFUL": "Code copied to clipboard successfully"
+      "BUTTON_TEXT": "Kopieren",
+      "COPY_SUCCESSFUL": "Code wurde erfolgreich in die Zwischenablage kopiert"
     },
     "FILE_BUBBLE": {
       "DOWNLOAD": "Herunterladen",
-      "UPLOADING": "Uploading..."
+      "UPLOADING": "Lade hoch..."
     },
     "FORM_BUBBLE": {
-      "SUBMIT": "Einreichen"
+      "SUBMIT": "Abschicken"
     }
   },
   "CONFIRM_EMAIL": "Verifying...",
   "SETTINGS": {
     "INBOXES": {
-      "NEW_INBOX": "Add Inbox"
+      "NEW_INBOX": "Neuer Posteingang"
     }
   },
   "SIDEBAR": {
@@ -129,11 +129,11 @@
     "LABELS": "Labels"
   },
   "CREATE_ACCOUNT": {
-    "NEW_ACCOUNT": "New Account",
-    "SELECTOR_SUBTITLE": "Create a new account",
+    "NEW_ACCOUNT": "Neues Konto",
+    "SELECTOR_SUBTITLE": "Ein neues Konto erzeugen",
     "API": {
-      "SUCCESS_MESSAGE": "Account created successfully",
-      "EXIST_MESSAGE": "Account already exists",
+      "SUCCESS_MESSAGE": "Konto erfolgreich angelegt",
+      "EXIST_MESSAGE": "Konto existiert bereits",
       "ERROR_MESSAGE": "Es konnte keine Verbindung zum Woot Server hergestellt werden. Bitte versuchen Sie es später erneut"
     },
     "FORM": {
@@ -141,7 +141,7 @@
         "LABEL": "Kontobezeichnung",
         "PLACEHOLDER": "Wayne Enterprises"
       },
-      "SUBMIT": "Einreichen"
+      "SUBMIT": "Abschicken"
     }
   }
 }

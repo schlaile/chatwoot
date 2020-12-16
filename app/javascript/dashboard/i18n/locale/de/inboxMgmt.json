@@ -7,7 +7,7 @@
     },
     "CREATE_FLOW": [
       {
-        "title": "Wählen Sie Kanal",
+        "title": "Wählen Sie einen Kanal",
         "route": "settings_inbox_new",
         "body": "Wählen Sie den Anbieter, den Sie in Chatwoot integrieren möchten."
       },

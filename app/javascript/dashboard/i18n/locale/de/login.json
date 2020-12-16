@@ -3,7 +3,7 @@
     "TITLE": "Melden Sie sich bei Chatwoot an",
     "EMAIL": {
       "LABEL": "Email",
-      "PLACEHOLDER": "Email eg: someone@example.com"
+      "PLACEHOLDER": "Email z.B.: max@mustermann.de"
     },
     "PASSWORD": {
       "LABEL": "Passwort",
@@ -12,10 +12,10 @@
     "API": {
       "SUCCESS_MESSAGE": "Anmeldung erfolgreich",
       "ERROR_MESSAGE": "Es konnte keine Verbindung zum Woot Server hergestellt werden. Bitte versuchen Sie es später erneut",
-      "UNAUTH": "Benutzername / Passwort falsch. Bitte versuche es erneut"
+      "UNAUTH": "Benutzername / Passwort falsch. Bitte versuchen Sie es erneut"
     },
     "FORGOT_PASSWORD": "Haben Sie Ihr Passwort vergessen?",
-    "CREATE_NEW_ACCOUNT": "Neuen Account erstellen",
+    "CREATE_NEW_ACCOUNT": "Neues Konto erstellen",
     "SUBMIT": "Einloggen"
   }
 }

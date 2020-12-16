@@ -9,11 +9,11 @@
     "CLICK_HERE": "Hier klicken",
     "LOADING_INBOXES": "Posteingänge laden",
     "LOADING_CONVERSATIONS": "Gespräche laden",
-    "CANNOT_REPLY": "You cannot reply due to",
-    "24_HOURS_WINDOW": "24 hour message window restriction",
-    "LAST_INCOMING_TWEET": "You are replying to the last incoming tweet",
-    "REPLYING_TO": "You are replying to:",
-    "REMOVE_SELECTION": "Remove Selection",
+    "CANNOT_REPLY": "Sie können aus folgendem Grund nicht antworten:",
+    "24_HOURS_WINDOW": "24 Stunden Beschränkung für Antworten",
+    "LAST_INCOMING_TWEET": "Sie antworten auf den zuletzt erhaltenen Tweet",
+    "REPLYING_TO": "Sie antworten auf:",
+    "REMOVE_SELECTION": "Selektion aufheben",
     "DOWNLOAD": "Herunterladen",
     "HEADER": {
       "RESOLVE_ACTION": "Fall schließen",
@@ -38,18 +38,18 @@
     "CHANGE_AGENT": "Konversationsempfänger geändert"
   },
   "EMAIL_TRANSCRIPT": {
-    "TITLE": "Send conversation transcript",
-    "DESC": "Send a copy of the conversation transcript to the specified email address",
-    "SUBMIT": "Einreichen",
-    "CANCEL": "Stornieren",
-    "SEND_EMAIL_SUCCESS": "The chat transcript was sent successfully",
-    "SEND_EMAIL_ERROR": "There was an error, please try again",
+    "TITLE": "Gesprächsprotokoll senden",
+    "DESC": "Eine Kopie des Gesprächsprotokolls an die angegebene Email-Adresse senden",
+    "SUBMIT": "Abschicken",
+    "CANCEL": "Abbrechen",
+    "SEND_EMAIL_SUCCESS": "Das Gesprächsprotokoll wurde erfolgreich gesendet",
+    "SEND_EMAIL_ERROR": "Es gab einen Fehler beim Senden, bitte nochmals probieren",
     "FORM": {
-      "SEND_TO_CONTACT": "Send the transcript to the customer",
-      "SEND_TO_AGENT": "Send the transcript of the assigned agent",
-      "SEND_TO_OTHER_EMAIL_ADDRESS": "Send the transcript to another email address",
+      "SEND_TO_CONTACT": "Protokoll an den Kunden senden",
+      "SEND_TO_AGENT": "Protokoll an den zugewiesenen Agenten senden",
+      "SEND_TO_OTHER_EMAIL_ADDRESS": "Protokoll an eine andere Email-Adresse senden",
       "EMAIL": {
-        "PLACEHOLDER": "Enter an email address",
+        "PLACEHOLDER": "Hier eine Email-Adresse eingeben",
         "ERROR": "Bitte geben Sie eine gültige E-Mail-Adresse ein"
       }
     }
