@@ -1,10 +1,10 @@
-/* eslint no-console: 0 */
-/* eslint no-param-reassign: 0 */
 import Vue from 'vue';
-import * as types from '../../mutation-types';
+import types from '../../mutation-types';
 import getters, { getSelectedChatConversation } from './getters';
 import actions from './actions';
+import { findPendingMessageIndex } from './helpers';
 import wootConstants from '../../../constants';
+import { BUS_EVENTS } from '../../../../shared/constants/busEvents';
 
 const state = {
   allConversations: [],
@@ -12,11 +12,12 @@ const state = {
   chatStatusFilter: wootConstants.STATUS_TYPE.OPEN,
   currentInbox: null,
   selectedChatId: null,
+  appliedFilters: [],
 };
 
 // mutations
 export const mutations = {
-  [types.default.SET_ALL_CONVERSATION](_state, conversationList) {
+  [types.SET_ALL_CONVERSATION](_state, conversationList) {
     const newAllConversations = [..._state.allConversations];
     conversationList.forEach(conversation => {
       const indexInCurrentList = newAllConversations.findIndex(
@@ -28,83 +29,96 @@ export const mutations = {
     });
     _state.allConversations = newAllConversations;
   },
-  [types.default.EMPTY_ALL_CONVERSATION](_state) {
+  [types.EMPTY_ALL_CONVERSATION](_state) {
     _state.allConversations = [];
     _state.selectedChatId = null;
   },
-  [types.default.SET_ALL_MESSAGES_LOADED](_state) {
+  [types.SET_ALL_MESSAGES_LOADED](_state) {
     const [chat] = getSelectedChatConversation(_state);
     Vue.set(chat, 'allMessagesLoaded', true);
   },
 
-  [types.default.CLEAR_ALL_MESSAGES_LOADED](_state) {
+  [types.CLEAR_ALL_MESSAGES_LOADED](_state) {
     const [chat] = getSelectedChatConversation(_state);
     Vue.set(chat, 'allMessagesLoaded', false);
   },
-  [types.default.CLEAR_CURRENT_CHAT_WINDOW](_state) {
+  [types.CLEAR_CURRENT_CHAT_WINDOW](_state) {
     _state.selectedChatId = null;
   },
 
-  [types.default.SET_PREVIOUS_CONVERSATIONS](_state, { id, data }) {
+  [types.SET_PREVIOUS_CONVERSATIONS](_state, { id, data }) {
     if (data.length) {
       const [chat] = _state.allConversations.filter(c => c.id === id);
       chat.messages.unshift(...data);
     }
   },
 
-  [types.default.SET_CURRENT_CHAT_WINDOW](_state, activeChat) {
+  [types.SET_CURRENT_CHAT_WINDOW](_state, activeChat) {
     if (activeChat) {
       _state.selectedChatId = activeChat.id;
     }
   },
 
-  [types.default.ASSIGN_AGENT](_state, assignee) {
+  [types.ASSIGN_AGENT](_state, assignee) {
     const [chat] = getSelectedChatConversation(_state);
-    chat.meta.assignee = assignee;
+    Vue.set(chat.meta, 'assignee', assignee);
   },
 
-  [types.default.RESOLVE_CONVERSATION](_state, status) {
+  [types.ASSIGN_TEAM](_state, team) {
     const [chat] = getSelectedChatConversation(_state);
-    chat.status = status;
+    Vue.set(chat.meta, 'team', team);
   },
 
-  [types.default.MUTE_CONVERSATION](_state) {
+  [types.UPDATE_CONVERSATION_CUSTOM_ATTRIBUTES](_state, custom_attributes) {
     const [chat] = getSelectedChatConversation(_state);
-    chat.muted = true;
+    Vue.set(chat, 'custom_attributes', custom_attributes);
   },
 
-  [types.default.SEND_MESSAGE](_state, currentMessage) {
-    const [chat] = getSelectedChatConversation(_state);
-    const allMessagesExceptCurrent = (chat.messages || []).filter(
-      message => message.id !== currentMessage.id
-    );
-    allMessagesExceptCurrent.push(currentMessage);
-    chat.messages = allMessagesExceptCurrent;
+  [types.CHANGE_CONVERSATION_STATUS](
+    _state,
+    { conversationId, status, snoozedUntil }
+  ) {
+    const conversation =
+      getters.getConversationById(_state)(conversationId) || {};
+    Vue.set(conversation, 'snoozed_until', snoozedUntil);
+    Vue.set(conversation, 'status', status);
   },
 
-  [types.default.ADD_MESSAGE](_state, message) {
-    const [chat] = _state.allConversations.filter(
-      c => c.id === message.conversation_id
-    );
+  [types.MUTE_CONVERSATION](_state) {
+    const [chat] = getSelectedChatConversation(_state);
+    Vue.set(chat, 'muted', true);
+  },
+
+  [types.UNMUTE_CONVERSATION](_state) {
+    const [chat] = getSelectedChatConversation(_state);
+    Vue.set(chat, 'muted', false);
+  },
+
+  [types.ADD_MESSAGE]({ allConversations, selectedChatId }, message) {
+    const { conversation_id: conversationId } = message;
+    const [chat] = getSelectedChatConversation({
+      allConversations,
+      selectedChatId: conversationId,
+    });
     if (!chat) return;
-    const previousMessageIndex = chat.messages.findIndex(
-      m => m.id === message.id
-    );
-    if (previousMessageIndex === -1) {
-      chat.messages.push(message);
-      if (_state.selectedChatId === message.conversation_id) {
-        window.bus.$emit('scrollToMessage');
-      }
+
+    const pendingMessageIndex = findPendingMessageIndex(chat, message);
+    if (pendingMessageIndex !== -1) {
+      Vue.set(chat.messages, pendingMessageIndex, message);
     } else {
-      chat.messages[previousMessageIndex] = message;
+      chat.messages.push(message);
+      chat.timestamp = message.created_at;
+      if (selectedChatId === conversationId) {
+        window.bus.$emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
+      }
     }
   },
 
-  [types.default.ADD_CONVERSATION](_state, conversation) {
+  [types.ADD_CONVERSATION](_state, conversation) {
     _state.allConversations.push(conversation);
   },
 
-  [types.default.UPDATE_CONVERSATION](_state, conversation) {
+  [types.UPDATE_CONVERSATION](_state, conversation) {
     const { allConversations } = _state;
     const currentConversationIndex = allConversations.findIndex(
       c => c.id === conversation.id
@@ -117,60 +131,69 @@ export const mutations = {
       };
       Vue.set(allConversations, currentConversationIndex, currentConversation);
       if (_state.selectedChatId === conversation.id) {
-        window.bus.$emit('scrollToMessage');
+        window.bus.$emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
       }
     } else {
       _state.allConversations.push(conversation);
     }
   },
 
-  [types.default.SET_LIST_LOADING_STATUS](_state) {
+  [types.SET_LIST_LOADING_STATUS](_state) {
     _state.listLoadingStatus = true;
   },
 
-  [types.default.CLEAR_LIST_LOADING_STATUS](_state) {
+  [types.CLEAR_LIST_LOADING_STATUS](_state) {
     _state.listLoadingStatus = false;
   },
 
-  [types.default.MARK_MESSAGE_READ](_state, { id, lastSeen }) {
+  [types.MARK_MESSAGE_READ](_state, { id, lastSeen }) {
     const [chat] = _state.allConversations.filter(c => c.id === id);
     if (chat) {
       chat.agent_last_seen_at = lastSeen;
     }
   },
 
-  [types.default.CHANGE_CHAT_STATUS_FILTER](_state, data) {
+  [types.CHANGE_CHAT_STATUS_FILTER](_state, data) {
     _state.chatStatusFilter = data;
   },
 
   // Update assignee on action cable message
-  [types.default.UPDATE_ASSIGNEE](_state, payload) {
+  [types.UPDATE_ASSIGNEE](_state, payload) {
     const [chat] = _state.allConversations.filter(c => c.id === payload.id);
-    chat.meta.assignee = payload.assignee;
+    Vue.set(chat.meta, 'assignee', payload.assignee);
   },
 
-  [types.default.UPDATE_CONVERSATION_CONTACT](
-    _state,
-    { conversationId, ...payload }
-  ) {
+  [types.UPDATE_CONVERSATION_CONTACT](_state, { conversationId, ...payload }) {
     const [chat] = _state.allConversations.filter(c => c.id === conversationId);
     if (chat) {
       Vue.set(chat.meta, 'sender', payload);
     }
   },
 
-  [types.default.SET_ACTIVE_INBOX](_state, inboxId) {
+  [types.SET_ACTIVE_INBOX](_state, inboxId) {
     _state.currentInbox = inboxId ? parseInt(inboxId, 10) : null;
   },
 
-  [types.default.SET_CONVERSATION_CAN_REPLY](
-    _state,
-    { conversationId, canReply }
-  ) {
+  [types.SET_CONVERSATION_CAN_REPLY](_state, { conversationId, canReply }) {
     const [chat] = _state.allConversations.filter(c => c.id === conversationId);
     if (chat) {
       Vue.set(chat, 'can_reply', canReply);
     }
+  },
+
+  [types.CLEAR_CONTACT_CONVERSATIONS](_state, contactId) {
+    const chats = _state.allConversations.filter(
+      c => c.meta.sender.id !== contactId
+    );
+    Vue.set(_state, 'allConversations', chats);
+  },
+
+  [types.SET_CONVERSATION_FILTERS](_state, data) {
+    _state.appliedFilters = data;
+  },
+
+  [types.CLEAR_CONVERSATION_FILTERS](_state) {
+    _state.appliedFilters = [];
   },
 };
 

@@ -5,9 +5,14 @@
       :value="value"
       :type="type"
       :placeholder="placeholder"
+      :readonly="readonly"
       @input="onChange"
+      @blur="onBlur"
     />
     <p v-if="helpText" class="help-text"></p>
+    <span v-if="error" class="message">
+      {{ error }}
+    </span>
   </label>
 </template>
 
@@ -34,10 +39,21 @@ export default {
       type: String,
       default: '',
     },
+    error: {
+      type: String,
+      default: '',
+    },
+    readonly: {
+      type: Boolean,
+      deafaut: false,
+    },
   },
   methods: {
     onChange(e) {
       this.$emit('input', e.target.value);
+    },
+    onBlur(e) {
+      this.$emit('blur', e.target.value);
     },
   },
 };

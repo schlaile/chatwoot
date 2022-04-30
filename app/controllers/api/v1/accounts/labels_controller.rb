@@ -18,7 +18,7 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
   end
 
   def destroy
-    @label.destroy
+    @label.destroy!
     head :ok
   end
 
@@ -26,10 +26,6 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
 
   def fetch_label
     @label = Current.account.labels.find(params[:id])
-  end
-
-  def check_authorization
-    authorize(Label)
   end
 
   def permitted_params

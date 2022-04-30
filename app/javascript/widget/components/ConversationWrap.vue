@@ -37,7 +37,10 @@ export default {
     Spinner,
   },
   props: {
-    groupedMessages: Array,
+    groupedMessages: {
+      type: Array,
+      default: () => [],
+    },
   },
   data() {
     return {
@@ -106,6 +109,7 @@ export default {
   flex-direction: column;
   flex: 1;
   overflow-y: auto;
+  color-scheme: light dark;
 }
 
 .conversation-wrap {
@@ -115,17 +119,5 @@ export default {
 
 .message--loader {
   text-align: center;
-}
-</style>
-<style lang="scss">
-.conversation-wrap.is-typing .messages-wrap div:last-child {
-  .agent-message {
-    .agent-name {
-      display: none;
-    }
-    .user-thumbnail-box {
-      margin-top: 0;
-    }
-  }
 }
 </style>

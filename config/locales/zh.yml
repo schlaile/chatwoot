@@ -16,7 +16,7 @@
 #'true': 'foo'
 #To learn more, please read the Rails Internationalization guide
 #available at https://guides.rubyonrails.org/i18n.html.
-zh-CN:
+zh_CN:
   hello: "您好世界"
   messages:
     reset_password_success: 哇！密码重置请求成功。请检查您的邮件获取说明。
@@ -32,6 +32,7 @@ zh-CN:
       status:
         resolved: "对话被标记由 %{user_name} 解决"
         open: "对话被 %{user_name} 重新打开"
+        auto_resolved: "Conversation was marked resolved by system due to %{duration} days of inactivity"
       assignee:
         assigned: "由 %{assignee_name} 分配给 %{user_name}"
         removed: "对话未被 %{user_name} 分配"

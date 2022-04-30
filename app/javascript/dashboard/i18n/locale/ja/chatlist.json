@@ -1,84 +1,86 @@
 {
   "CHAT_LIST": {
-    "LOADING": "Fetching conversations",
-    "LOAD_MORE_CONVERSATIONS": "Load more conversations",
-    "EOF": "All conversations loaded 🎉",
+    "LOADING": "会話のデータを取得しています",
+    "LOAD_MORE_CONVERSATIONS": "会話のデータをさらに読み込む",
+    "EOF": "すべての会話データが読み込まれました🎉",
     "LIST": {
-      "404": "There are no active conversations in this group."
+      "404": "このグループには有効な会話データがありません"
     },
-    "TAB_HEADING": "Conversations",
+    "TAB_HEADING": "会話データ",
+    "MENTION_HEADING": "Mentions",
     "SEARCH": {
-      "INPUT": "Search for People, Chats, Saved Replies .."
+      "INPUT": "人物、チャット、保存された返信を検索する"
     },
+    "FILTER_ALL": "すべて",
     "STATUS_TABS": [
       {
-        "NAME": "Open",
+        "NAME": "開く",
         "KEY": "openCount"
       },
       {
-        "NAME": "Resolved",
+        "NAME": "解決済み",
         "KEY": "allConvCount"
       }
     ],
     "ASSIGNEE_TYPE_TABS": [
       {
-        "NAME": "Mine",
+        "NAME": "自分",
         "KEY": "me",
         "COUNT_KEY": "mineCount"
       },
       {
-        "NAME": "Unassigned",
+        "NAME": "未割当",
         "KEY": "unassigned",
         "COUNT_KEY": "unAssignedCount"
       },
       {
-        "NAME": "All",
+        "NAME": "すべて",
         "KEY": "all",
         "COUNT_KEY": "allCount"
       }
     ],
-    "CHAT_STATUS_ITEMS": [
-      {
-        "TEXT": "Open",
-        "VALUE": "open"
+    "CHAT_STATUS_FILTER_ITEMS": {
+      "open": {
+        "TEXT": "開く"
       },
-      {
-        "TEXT": "Resolved",
-        "VALUE": "resolved"
+      "resolved": {
+        "TEXT": "解決済み"
       },
-      {
-        "TEXT": "Bot",
-        "VALUE": "bot"
-      }
-    ],
-    "ATTACHMENTS": {
-      "image": {
-        "ICON": "ion-image",
-        "CONTENT": "Picture message"
+      "pending": {
+        "TEXT": "Pending"
       },
-      "audio": {
-        "ICON": "ion-volume-high",
-        "CONTENT": "Audio message"
-      },
-      "video": {
-        "ICON": "ion-ios-videocam",
-        "CONTENT": "Video message"
-      },
-      "file": {
-        "ICON": "ion-document",
-        "CONTENT": "File Attachment"
-      },
-      "location": {
-        "ICON": "ion-ios-location",
-        "CONTENT": "Location"
-      },
-      "fallback": {
-        "ICON": "ion-link",
-        "CONTENT": "has shared a url"
+      "snoozed": {
+        "TEXT": "Snoozed"
       }
     },
-    "RECEIVED_VIA_EMAIL": "Received via email",
-    "VIEW_TWEET_IN_TWITTER": "View tweet in Twitter",
-    "REPLY_TO_TWEET": "Reply to this tweet"
+    "ATTACHMENTS": {
+      "image": {
+        "CONTENT": "画像メッセージ"
+      },
+      "audio": {
+        "CONTENT": "音声メッセージ"
+      },
+      "video": {
+        "CONTENT": "ビデオ メッセージ"
+      },
+      "file": {
+        "CONTENT": "添付ファイル"
+      },
+      "location": {
+        "CONTENT": "場所"
+      },
+      "fallback": {
+        "CONTENT": "URLを共有しています"
+      }
+    },
+    "RECEIVED_VIA_EMAIL": "メールで受信しました",
+    "VIEW_TWEET_IN_TWITTER": "ツイートをTwitterで見る",
+    "REPLY_TO_TWEET": "このつぶやきに返信",
+    "LINK_TO_STORY": "Go to instagram story",
+    "SENT": "Sent successfully",
+    "NO_MESSAGES": "No Messages",
+    "NO_CONTENT": "No content available",
+    "HIDE_QUOTED_TEXT": "Hide Quoted Text",
+    "SHOW_QUOTED_TEXT": "Show Quoted Text"
   }
 }

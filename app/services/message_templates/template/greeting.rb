@@ -6,7 +6,7 @@ class MessageTemplates::Template::Greeting
       conversation.messages.create!(greeting_message_params)
     end
   rescue StandardError => e
-    Raven.capture_exception(e)
+    Sentry.capture_exception(e)
     true
   end
 
@@ -17,10 +17,6 @@ class MessageTemplates::Template::Greeting
 
   def greeting_message_params
     content = @conversation.inbox&.greeting_message
-    if content.blank?
-      content = I18n.t('conversations.templates.greeting_message_body',
-                       account_name: account.name)
-    end
 
     {
       account_id: @conversation.account_id,

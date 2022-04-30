@@ -30,4 +30,6 @@ module.exports = {
     '**/app/javascript/**/*.spec.(js|jsx|ts|tsx)|**/__tests__/*.(js|jsx|ts|tsx)',
   ],
   testURL: 'http://localhost/',
+  globalSetup: './jest.setup.js',
+  testEnvironment: 'jsdom',
 };

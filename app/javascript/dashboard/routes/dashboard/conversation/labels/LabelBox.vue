@@ -1,34 +1,40 @@
 <template>
-  <div class="contact-conversation--panel sidebar-labels-wrap">
+  <div class="sidebar-labels-wrap">
     <div
       v-if="!conversationUiFlags.isFetching"
       class="contact-conversation--list"
     >
-      <contact-details-item
-        :title="$t('CONTACT_PANEL.LABELS.TITLE')"
-        icon="ion-pricetags"
-        :show-edit="true"
-        @edit="onEdit"
-      />
-      <woot-label
-        v-for="label in activeLabels"
-        :key="label.id"
-        :title="label.title"
-        :description="label.description"
-        :bg-color="label.color"
-      />
-      <div v-if="!activeLabels.length">
-        {{ $t('CONTACT_PANEL.LABELS.NO_AVAILABLE_LABELS') }}
+      <div
+        v-on-clickaway="closeDropdownLabel"
+        class="label-wrap"
+        @keyup.esc="closeDropdownLabel"
+      >
+        <add-label @add="toggleLabels" />
+        <woot-label
+          v-for="label in activeLabels"
+          :key="label.id"
+          :title="label.title"
+          :description="label.description"
+          :show-close="true"
+          :bg-color="label.color"
+          @click="removeLabelFromConversation"
+        />
+
+        <div class="dropdown-wrap">
+          <div
+            :class="{ 'dropdown-pane--open': showSearchDropdownLabel }"
+            class="dropdown-pane"
+          >
+            <label-dropdown
+              v-if="showSearchDropdownLabel"
+              :account-labels="accountLabels"
+              :selected-labels="savedLabels"
+              @add="addLabelToConversation"
+              @remove="removeLabelFromConversation"
+            />
+          </div>
+        </div>
       </div>
-      <add-label-to-conversation
-        v-if="isEditing"
-        :conversation-id="conversationId"
-        :account-labels="accountLabels"
-        :saved-labels="savedLabels"
-        :show.sync="isEditing"
-        :on-close="closeEditModal"
-        :update-labels="onUpdateLabels"
-      />
     </div>
     <spinner v-else></spinner>
   </div>
@@ -36,127 +42,81 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import AddLabelToConversation from './AddLabelToConversation';
-import ContactDetailsItem from '../ContactDetailsItem';
 import Spinner from 'shared/components/Spinner';
+import LabelDropdown from 'shared/components/ui/label/LabelDropdown';
+import AddLabel from 'shared/components/ui/dropdown/AddLabel';
+import { mixin as clickaway } from 'vue-clickaway';
+import conversationLabelMixin from 'dashboard/mixins/conversation/labelMixin';
 
 export default {
   components: {
-    AddLabelToConversation,
-    ContactDetailsItem,
     Spinner,
+    LabelDropdown,
+    AddLabel,
   },
+
+  mixins: [clickaway, conversationLabelMixin],
   props: {
     conversationId: {
-      type: [String, Number],
+      type: Number,
       required: true,
     },
   },
+
   data() {
     return {
-      isEditing: false,
       selectedLabels: [],
+      showSearchDropdownLabel: false,
     };
   },
+
   computed: {
-    savedLabels() {
-      return this.$store.getters['conversationLabels/getConversationLabels'](
-        this.conversationId
-      );
-    },
     ...mapGetters({
-      conversationUiFlags: 'contactConversations/getUIFlags',
+      conversationUiFlags: 'conversationLabels/getUIFlags',
       labelUiFlags: 'conversationLabels/getUIFlags',
-      accountLabels: 'labels/getLabels',
     }),
-    activeLabels() {
-      return this.accountLabels.filter(({ title }) =>
-        this.savedLabels.includes(title)
-      );
-    },
-  },
-  watch: {
-    conversationId(newConversationId, prevConversationId) {
-      if (newConversationId && newConversationId !== prevConversationId) {
-        this.fetchLabels(newConversationId);
-      }
-    },
-  },
-  mounted() {
-    const { conversationId } = this;
-    this.fetchLabels(conversationId);
   },
   methods: {
-    async onUpdateLabels(selectedLabels) {
-      try {
-        await this.$store.dispatch('conversationLabels/update', {
-          conversationId: this.conversationId,
-          labels: selectedLabels,
-        });
-      } catch (error) {
-        // Ignore error
-      }
+    toggleLabels() {
+      this.showSearchDropdownLabel = !this.showSearchDropdownLabel;
     },
-    onEdit() {
-      this.isEditing = true;
-    },
-    closeEditModal() {
-      bus.$emit('fetch_conversation_stats');
-      this.isEditing = false;
-    },
-    async fetchLabels(conversationId) {
-      if (!conversationId) {
-        return;
-      }
-      this.$store.dispatch('conversationLabels/get', conversationId);
+    closeDropdownLabel() {
+      this.showSearchDropdownLabel = false;
     },
   },
 };
 </script>
 
 <style lang="scss" scoped>
-@import '~dashboard/assets/scss/variables';
-@import '~dashboard/assets/scss/mixins';
-
-.contact-conversation--panel {
-  padding: $space-normal;
+.sidebar-labels-wrap {
+  margin-bottom: var(--space-normal);
 }
+.contact-conversation--list {
+  width: 100%;
 
-.conversation--label {
-  color: $color-white;
-  margin-right: $space-small;
-  font-size: $font-size-small;
-  padding: $space-smaller;
-}
+  .label-wrap {
+    line-height: var(--space-medium);
+    position: relative;
 
-.select-tags {
-  .multiselect {
-    &:hover {
-      cursor: pointer;
+    .dropdown-wrap {
+      display: flex;
+      left: -1px;
+      margin-right: var(--space-medium);
+      position: absolute;
+      top: var(--space-medium);
+      width: 100%;
+
+      .dropdown-pane {
+        width: 100%;
+        box-sizing: border-box;
+      }
     }
-    transition: $transition-ease-in;
-    margin-bottom: 0;
   }
 }
 
-.button {
-  margin-top: $space-small;
-  margin-left: auto;
-}
-
-.no-results-wrap {
-  padding: 0 $space-small;
-}
-
-.no-results {
-  margin: $space-normal 0 0 0;
-  color: $color-gray;
-  font-weight: $font-weight-normal;
-}
-
 .error {
-  color: $alert-color;
-  font-size: $font-size-mini;
-  font-weight: $font-weight-medium;
+  color: var(--r-500);
+  font-size: var(--font-size-mini);
+  font-weight: var(--font-weight-medium);
 }
 </style>

@@ -61,4 +61,183 @@ describe('#mutations', () => {
       expect(state.allConversations[0].can_reply).toEqual(true);
     });
   });
+
+  describe('#ADD_MESSAGE', () => {
+    it('does not add message to the store if conversation does not exist', () => {
+      const state = { allConversations: [] };
+      mutations[types.ADD_MESSAGE](state, { conversationId: 1 });
+      expect(state.allConversations).toEqual([]);
+    });
+
+    it('add message to the conversation if it does not exist in the store', () => {
+      global.bus = { $emit: jest.fn() };
+      const state = {
+        allConversations: [{ id: 1, messages: [] }],
+        selectedChatId: -1,
+      };
+      mutations[types.ADD_MESSAGE](state, {
+        conversation_id: 1,
+        content: 'Test message',
+        created_at: 1602256198,
+      });
+      expect(state.allConversations).toEqual([
+        {
+          id: 1,
+          messages: [
+            {
+              conversation_id: 1,
+              content: 'Test message',
+              created_at: 1602256198,
+            },
+          ],
+          timestamp: 1602256198,
+        },
+      ]);
+      expect(global.bus.$emit).not.toHaveBeenCalled();
+    });
+
+    it('add message to the conversation and emit scrollToMessage if it does not exist in the store', () => {
+      global.bus = { $emit: jest.fn() };
+      const state = {
+        allConversations: [{ id: 1, messages: [] }],
+        selectedChatId: 1,
+      };
+      mutations[types.ADD_MESSAGE](state, {
+        conversation_id: 1,
+        content: 'Test message',
+        created_at: 1602256198,
+      });
+      expect(state.allConversations).toEqual([
+        {
+          id: 1,
+          messages: [
+            {
+              conversation_id: 1,
+              content: 'Test message',
+              created_at: 1602256198,
+            },
+          ],
+          timestamp: 1602256198,
+        },
+      ]);
+      expect(global.bus.$emit).toHaveBeenCalledWith('SCROLL_TO_MESSAGE');
+    });
+
+    it('update message if it exist in the store', () => {
+      global.bus = { $emit: jest.fn() };
+      const state = {
+        allConversations: [
+          {
+            id: 1,
+            messages: [
+              {
+                conversation_id: 1,
+                content: 'Test message',
+                created_at: 1602256198,
+              },
+            ],
+          },
+        ],
+        selectedChatId: 1,
+      };
+      mutations[types.ADD_MESSAGE](state, {
+        conversation_id: 1,
+        content: 'Test message 1',
+        created_at: 1602256198,
+      });
+      expect(state.allConversations).toEqual([
+        {
+          id: 1,
+          messages: [
+            {
+              conversation_id: 1,
+              content: 'Test message 1',
+              created_at: 1602256198,
+            },
+          ],
+        },
+      ]);
+      expect(global.bus.$emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('#CHANGE_CONVERSATION_STATUS', () => {
+    it('updates the conversation status correctly', () => {
+      const state = {
+        allConversations: [
+          {
+            id: 1,
+            messages: [],
+            status: 'open',
+          },
+        ],
+      };
+
+      mutations[types.CHANGE_CONVERSATION_STATUS](state, {
+        conversationId: '1',
+        status: 'resolved',
+      });
+
+      expect(state.allConversations).toEqual([
+        {
+          id: 1,
+          messages: [],
+          status: 'resolved',
+        },
+      ]);
+    });
+
+    describe('#UPDATE_CONVERSATION_CUSTOM_ATTRIBUTES', () => {
+      it('update conversation custom attributes', () => {
+        const custom_attributes = { order_id: 1001 };
+        const state = { allConversations: [{ id: 1 }], selectedChatId: 1 };
+        mutations[types.UPDATE_CONVERSATION_CUSTOM_ATTRIBUTES](state, {
+          conversationId: 1,
+          custom_attributes,
+        });
+        expect(
+          state.allConversations[0].custom_attributes.custom_attributes
+        ).toEqual(custom_attributes);
+      });
+    });
+  });
+
+  describe('#SET_CONVERSATION_FILTERS', () => {
+    it('set conversation filter', () => {
+      const appliedFilters = [
+        {
+          attribute_key: 'status',
+          filter_operator: 'equal_to',
+          values: [{ id: 'snoozed', name: 'Snoozed' }],
+          query_operator: 'and',
+        },
+      ];
+      mutations[types.SET_CONVERSATION_FILTERS](appliedFilters);
+      expect(appliedFilters).toEqual([
+        {
+          attribute_key: 'status',
+          filter_operator: 'equal_to',
+          values: [{ id: 'snoozed', name: 'Snoozed' }],
+          query_operator: 'and',
+        },
+      ]);
+    });
+  });
+
+  describe('#CLEAR_CONVERSATION_FILTERS', () => {
+    it('clears applied conversation filters', () => {
+      const state = {
+        appliedFilters: [
+          {
+            attribute_key: 'status',
+            filter_operator: 'equal_to',
+            values: [{ id: 'snoozed', name: 'Snoozed' }],
+            query_operator: 'and',
+          },
+        ],
+      };
+      mutations[types.CLEAR_CONVERSATION_FILTERS](state);
+      expect(state.appliedFilters).toEqual([]);
+    });
+  });
 });

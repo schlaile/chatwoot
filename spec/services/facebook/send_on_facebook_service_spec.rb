@@ -5,12 +5,12 @@ describe Facebook::SendOnFacebookService do
 
   before do
     allow(Facebook::Messenger::Subscriptions).to receive(:subscribe).and_return(true)
-    allow(bot).to receive(:deliver)
+    allow(bot).to receive(:deliver).and_return({ recipient_id: '1008372609250235', message_id: 'mid.1456970487936:c34767dfe57ee6e339' }.to_json)
     create(:message, message_type: :incoming, inbox: facebook_inbox, account: account, conversation: conversation)
   end
 
   let!(:account) { create(:account) }
-  let(:bot) { class_double('FacebookBot::Bot').as_stubbed_const }
+  let(:bot) { class_double('Facebook::Messenger::Bot').as_stubbed_const }
   let!(:widget_inbox) { create(:inbox, account: account) }
   let!(:facebook_channel) { create(:channel_facebook_page, account: account) }
   let!(:facebook_inbox) { create(:inbox, channel: facebook_channel, account: account) }
@@ -58,7 +58,21 @@ describe Facebook::SendOnFacebookService do
         attachment.file.attach(io: File.open(Rails.root.join('spec/assets/avatar.png')), filename: 'avatar.png', content_type: 'image/png')
         message.save!
         ::Facebook::SendOnFacebookService.new(message: message).perform
-        expect(bot).to have_received(:deliver)
+        expect(bot).to have_received(:deliver).with({
+                                                      recipient: { id: contact_inbox.source_id },
+                                                      message: { text: message.content }
+                                                    }, { page_id: facebook_channel.page_id })
+        expect(bot).to have_received(:deliver).with({
+                                                      recipient: { id: contact_inbox.source_id },
+                                                      message: {
+                                                        attachment: {
+                                                          type: 'image',
+                                                          payload: {
+                                                            url: attachment.file_url
+                                                          }
+                                                        }
+                                                      }
+                                                    }, { page_id: facebook_channel.page_id })
       end
     end
   end

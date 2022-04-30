@@ -1,14 +1,18 @@
 <template>
-  <li class="option" :class="{ 'is-selected': isSelected }">
+  <li
+    class="option"
+    :class="{ 'is-selected': isSelected }"
+    :style="{ borderColor: widgetColor }"
+  >
     <button class="option-button button" @click="onClick">
-      <span v-if="isSelected" class="icon ion-checkmark-circled" />
-      <span v-else class="icon ion-android-radio-button-off" />
-      <span>{{ action.title }}</span>
+      <span :style="{ color: widgetColor }">{{ action.title }}</span>
     </button>
   </li>
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
   components: {},
   props: {
@@ -21,6 +25,11 @@ export default {
       default: false,
     },
   },
+  computed: {
+    ...mapGetters({
+      widgetColor: 'appConfig/getWidgetColor',
+    }),
+  },
   methods: {
     onClick() {
       this.$emit('click', this.action);
@@ -30,19 +39,25 @@ export default {
 </script>
 
 <style scoped lang="scss">
-@import '~dashboard/assets/scss/variables.scss';
-@import '~dashboard/assets/scss/mixins.scss';
+@import '~widget/assets/scss/variables.scss';
+
 .option {
+  border-radius: $space-jumbo;
+  border: 1px solid $color-woot;
+  float: left;
+  margin: $space-smaller;
+  max-width: 100%;
+
   .option-button {
-    width: 100%;
-    padding: 0;
-    max-height: $space-larger;
-    border-radius: 0;
     background: transparent;
-    color: $color-woot;
+    border-radius: $space-large;
     border: 0;
-    text-align: left;
     cursor: pointer;
+    height: auto;
+    line-height: 1.5;
+    min-height: $space-two * 2;
+    text-align: left;
+    white-space: normal;
 
     span {
       display: inline-block;
@@ -52,16 +67,6 @@ export default {
     > .icon {
       margin-right: $space-smaller;
       font-size: $font-size-medium;
-    }
-  }
-
-  + .option .option-button {
-    @include border-normal-top;
-  }
-
-  &.is-selected {
-    .option-button {
-      color: $success-color;
     }
   }
 }

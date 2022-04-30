@@ -8,6 +8,11 @@
       "PLACEHOLDER": "Empresas de Wayne",
       "ERROR": "El nombre de la cuenta es demasiado corto"
     },
+    "FULL_NAME": {
+      "LABEL": "Nombre completo",
+      "PLACEHOLDER": "Introduce tu nombre completo, por ejemplo: Bruce Wayne",
+      "ERROR": "El nombre completo es demasiado corto"
+    },
     "EMAIL": {
       "LABEL": "E-mail",
       "PLACEHOLDER": "bruce@wayne.empresas",
@@ -27,6 +32,7 @@
       "SUCCESS_MESSAGE": "Registro Exitoso",
       "ERROR_MESSAGE": "No se pudo conectar al servidor Woot, por favor inténtalo de nuevo más tarde"
     },
-    "SUBMIT": "Enviar"
+    "SUBMIT": "Enviar",
+    "HAVE_AN_ACCOUNT": "¿Ya tienes una cuenta?"
   }
 }

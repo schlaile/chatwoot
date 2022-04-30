@@ -1,19 +1,17 @@
 <template>
   <div class="contact-conversation--panel">
-    <contact-details-item
-      :title="$t('CONTACT_PANEL.CONVERSATIONS.TITLE')"
-      icon="ion-chatboxes"
-    />
-    <div v-if="!uiFlags.isFetching">
-      <p v-if="!previousConversations.length" class="no-results">
-        {{ $t('CONTACT_PANEL.CONVERSATIONS.NO_RECORDS_FOUND') }}
-      </p>
+    <div v-if="!uiFlags.isFetching" class="contact-conversation__wrap">
+      <div v-if="!previousConversations.length" class="no-label-message">
+        <span>
+          {{ $t('CONTACT_PANEL.CONVERSATIONS.NO_RECORDS_FOUND') }}
+        </span>
+      </div>
       <div v-else class="contact-conversation--list">
         <conversation-card
           v-for="conversation in previousConversations"
           :key="conversation.id"
           :chat="conversation"
-          :hide-inbox-name="true"
+          :hide-inbox-name="false"
           :hide-thumbnail="true"
           class="compact"
         />
@@ -24,15 +22,13 @@
 </template>
 
 <script>
-import ConversationCard from 'dashboard/components/widgets/conversation/ConversationCard.vue';
+import ConversationCard from 'dashboard/components/widgets/conversation/ConversationCard';
 import { mapGetters } from 'vuex';
-import Spinner from 'shared/components/Spinner.vue';
-import ContactDetailsItem from './ContactDetailsItem.vue';
+import Spinner from 'shared/components/Spinner';
 
 export default {
   components: {
     ConversationCard,
-    ContactDetailsItem,
     Spinner,
   },
   props: {
@@ -74,15 +70,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import '~dashboard/assets/scss/variables';
-@import '~dashboard/assets/scss/mixins';
-
-.contact-conversation--panel {
-  padding: $space-normal;
-}
-
-.no-results {
-  margin: 0;
-  color: $color-gray;
+.no-label-message {
+  margin-bottom: var(--space-normal);
+  color: var(--b-500);
 }
 </style>

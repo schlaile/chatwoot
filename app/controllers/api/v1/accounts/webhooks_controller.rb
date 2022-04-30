@@ -16,7 +16,7 @@ class Api::V1::Accounts::WebhooksController < Api::V1::Accounts::BaseController
   end
 
   def destroy
-    @webhook.destroy
+    @webhook.destroy!
     head :ok
   end
 
@@ -28,9 +28,5 @@ class Api::V1::Accounts::WebhooksController < Api::V1::Accounts::BaseController
 
   def fetch_webhook
     @webhook = Current.account.webhooks.find(params[:id])
-  end
-
-  def check_authorization
-    authorize(Webhook)
   end
 end

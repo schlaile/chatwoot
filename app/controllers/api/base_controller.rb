@@ -10,4 +10,14 @@ class Api::BaseController < ApplicationController
   def authenticate_by_access_token?
     request.headers[:api_access_token].present? || request.headers[:HTTP_API_ACCESS_TOKEN].present?
   end
+
+  def check_authorization(model = nil)
+    model ||= controller_name.classify.constantize
+
+    authorize(model)
+  end
+
+  def check_admin_authorization?
+    raise Pundit::NotAuthorizedError unless Current.account_user.administrator?
+  end
 end

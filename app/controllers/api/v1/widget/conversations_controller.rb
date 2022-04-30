@@ -5,6 +5,20 @@ class Api::V1::Widget::ConversationsController < Api::V1::Widget::BaseController
     @conversation = conversation
   end
 
+  def create
+    ActiveRecord::Base.transaction do
+      process_update_contact
+      @conversation = create_conversation
+      conversation.messages.create(message_params)
+    end
+  end
+
+  def process_update_contact
+    update_contact(contact_email) if @contact.email.blank? && contact_email.present?
+    update_contact_phone_number(contact_phone_number) if @contact.phone_number.blank? && contact_phone_number.present?
+    @contact.update!(name: contact_name) if contact_name.present?
+  end
+
   def update_last_seen
     head :ok && return if conversation.nil?
 
@@ -15,7 +29,7 @@ class Api::V1::Widget::ConversationsController < Api::V1::Widget::BaseController
 
   def transcript
     if permitted_params[:email].present? && conversation.present?
-      ConversationReplyMailer.conversation_transcript(
+      ConversationReplyMailer.with(account: conversation.account).conversation_transcript(
         conversation,
         permitted_params[:email]
       )&.deliver_later
@@ -36,6 +50,18 @@ class Api::V1::Widget::ConversationsController < Api::V1::Widget::BaseController
     head :ok
   end
 
+  def toggle_status
+    return head :not_found if conversation.nil?
+
+    return head :forbidden unless @web_widget.end_conversation?
+
+    unless conversation.resolved?
+      conversation.status = :resolved
+      conversation.save
+    end
+    head :ok
+  end
+
   private
 
   def trigger_typing_event(event)
@@ -43,6 +69,7 @@ class Api::V1::Widget::ConversationsController < Api::V1::Widget::BaseController
   end
 
   def permitted_params
-    params.permit(:id, :typing_status, :website_token, :email)
+    params.permit(:id, :typing_status, :website_token, :email, contact: [:name, :email], message: [:content, :referer_url, :timestamp, :echo_id],
+                                                               custom_attributes: {})
   end
 end

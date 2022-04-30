@@ -3,14 +3,11 @@
     <button class="button small button--copy-code" @click="onCopy">
       {{ $t('COMPONENTS.CODE.BUTTON_TEXT') }}
     </button>
-    <highlight-code :lang="lang">
-      {{ script }}
-    </highlight-code>
+    <highlightjs v-if="script" :language="lang" :code="script" />
   </div>
 </template>
 
 <script>
-/* global bus */
 import 'highlight.js/styles/default.css';
 import copy from 'copy-text-to-clipboard';
 
@@ -18,7 +15,7 @@ export default {
   props: {
     script: {
       type: String,
-      required: true,
+      default: '',
     },
     lang: {
       type: String,

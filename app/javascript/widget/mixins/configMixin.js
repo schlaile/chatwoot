@@ -1,8 +1,5 @@
 export default {
   computed: {
-    hideInputForBotConversations() {
-      return window.chatwootWebChannel.hideInputForBotConversations;
-    },
     useInboxAvatarForBot() {
       return window.chatwootWidgetDefaults.useInboxAvatarForBot;
     },
@@ -20,6 +17,23 @@ export default {
     },
     hasAttachmentsEnabled() {
       return this.channelConfig.enabledFeatures.includes('attachments');
+    },
+    hasEndConversationEnabled() {
+      return this.channelConfig.enabledFeatures.includes('end_conversation');
+    },
+    preChatFormEnabled() {
+      return window.chatwootWebChannel.preChatFormEnabled;
+    },
+    preChatFormOptions() {
+      let requireEmail = false;
+      let preChatMessage = '';
+      const options = window.chatwootWebChannel.preChatFormOptions || {};
+      requireEmail = options.require_email;
+      preChatMessage = options.pre_chat_message;
+      return {
+        requireEmail,
+        preChatMessage,
+      };
     },
   },
 };

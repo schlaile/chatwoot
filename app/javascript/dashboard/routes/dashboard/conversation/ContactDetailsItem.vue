@@ -1,16 +1,15 @@
 <template>
-  <div class="conv-details--item">
-    <h4 class="conv-details--item__label">
-      <div>
-        <i v-if="icon" :class="icon" class="conv-details--item__icon"></i>
+  <div class="conv-details--item" :class="{ compact: compact }">
+    <h4 class="conv-details--item__label text-block-title">
+      <span class="item__title">
         {{ title }}
-      </div>
-      <button v-if="showEdit" @click="onEdit">
-        {{ $t('CONTACT_PANEL.EDIT_LABEL') }}
-      </button>
+      </span>
+      <slot name="button"></slot>
     </h4>
     <div v-if="value" class="conv-details--item__value">
-      {{ value }}
+      <slot>
+        {{ value }}
+      </slot>
     </div>
   </div>
 </template>
@@ -20,45 +19,34 @@ export default {
   props: {
     title: { type: String, required: true },
     icon: { type: String, default: '' },
+    emoji: { type: String, default: '' },
     value: { type: [String, Number], default: '' },
-    showEdit: { type: Boolean, default: false },
-  },
-  methods: {
-    onEdit() {
-      this.$emit('edit');
-    },
+    compact: { type: Boolean, default: false },
   },
 };
 </script>
 
 <style lang="scss" scoped>
-@import '~dashboard/assets/scss/variables';
-@import '~dashboard/assets/scss/mixins';
-
 .conv-details--item {
-  padding-bottom: var(--space-slab);
+  overflow: auto;
+  padding: var(--space-slab) var(--space-normal);
 
-  &:last-child {
-    padding-bottom: 0;
+  &.compact {
+    padding: 0;
   }
 
   .conv-details--item__label {
     align-items: center;
     display: flex;
-    font-size: $font-size-small;
-    font-weight: $font-weight-medium;
     justify-content: space-between;
-    margin-bottom: $space-micro;
 
-    button {
-      cursor: pointer;
-      color: $color-body;
+    .edit-button {
+      padding: 0;
     }
   }
 
   .conv-details--item__value {
     word-break: break-all;
-    margin-top: $space-small;
   }
 }
 </style>

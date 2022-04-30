@@ -1,5 +1,6 @@
 module OnlineStatusTracker
-  PRESENCE_DURATION = 60.seconds
+  # NOTE: You can customise the environment variable to keep your agents/contacts as online for longer
+  PRESENCE_DURATION = ENV.fetch('PRESENCE_DURATION', 20).to_i.seconds
 
   # presence : sorted set with timestamp as the score & object id as value
 
@@ -37,9 +38,13 @@ module OnlineStatusTracker
     format(::Redis::Alfred::ONLINE_STATUS, account_id: account_id)
   end
 
+  def self.get_available_contact_ids(account_id)
+    ::Redis::Alfred.zrangebyscore(presence_key(account_id, 'Contact'), (Time.zone.now - PRESENCE_DURATION).to_i, Time.now.to_i)
+  end
+
   def self.get_available_contacts(account_id)
-    contact_ids = ::Redis::Alfred.zrangebyscore(presence_key(account_id, 'Contact'), (Time.zone.now - PRESENCE_DURATION).to_i, Time.now.to_i)
-    contact_ids.index_with { |_id| 'online' }
+    # returns {id1: 'online', id2: 'online'}
+    get_available_contact_ids(account_id).index_with { |_id| 'online' }
   end
 
   def self.get_available_users(account_id)

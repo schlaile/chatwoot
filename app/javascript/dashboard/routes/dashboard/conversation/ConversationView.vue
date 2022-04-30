@@ -1,34 +1,39 @@
 <template>
-  <section class="app-content columns">
-    <chat-list :conversation-inbox="inboxId" :label="label"></chat-list>
+  <section class="conversation-page">
+    <chat-list
+      :conversation-inbox="inboxId"
+      :label="label"
+      :team-id="teamId"
+      :conversation-type="conversationType"
+      :folders-id="foldersId"
+      @conversation-load="onConversationLoad"
+    >
+      <pop-over-search />
+    </chat-list>
     <conversation-box
       :inbox-id="inboxId"
       :is-contact-panel-open="isContactPanelOpen"
       @contact-panel-toggle="onToggleContactPanel"
     >
     </conversation-box>
-    <contact-panel
-      v-if="isContactPanelOpen"
-      :conversation-id="conversationId"
-      :on-toggle="onToggleContactPanel"
-    />
   </section>
 </template>
 
 <script>
-/* eslint no-console: 0 */
 import { mapGetters } from 'vuex';
-
 import ChatList from '../../../components/ChatList';
-import ContactPanel from './ContactPanel';
 import ConversationBox from '../../../components/widgets/conversation/ConversationBox';
+import PopOverSearch from './search/PopOverSearch';
+import uiSettingsMixin from 'dashboard/mixins/uiSettings';
+import { BUS_EVENTS } from 'shared/constants/busEvents';
 
 export default {
   components: {
     ChatList,
-    ContactPanel,
     ConversationBox,
+    PopOverSearch,
   },
+  mixins: [uiSettingsMixin],
   props: {
     inboxId: {
       type: [String, Number],
@@ -42,11 +47,22 @@ export default {
       type: String,
       default: '',
     },
+    teamId: {
+      type: String,
+      default: '',
+    },
+    conversationType: {
+      type: String,
+      default: '',
+    },
+    foldersId: {
+      type: [String, Number],
+      default: 0,
+    },
   },
-
   data() {
     return {
-      panelToggleState: true,
+      showSearchModal: false,
     };
   },
   computed: {
@@ -54,38 +70,39 @@ export default {
       chatList: 'getAllConversations',
       currentChat: 'getSelectedChat',
     }),
-    isContactPanelOpen: {
-      get() {
-        if (this.currentChat.id) {
-          return this.panelToggleState;
-        }
-        return false;
-      },
-      set(val) {
-        this.panelToggleState = val;
-      },
+    isContactPanelOpen() {
+      if (this.currentChat.id) {
+        const {
+          is_contact_sidebar_open: isContactSidebarOpen,
+        } = this.uiSettings;
+        return isContactSidebarOpen;
+      }
+      return false;
     },
   },
-
+  watch: {
+    conversationId() {
+      this.fetchConversationIfUnavailable();
+    },
+  },
   mounted() {
-    this.$store.dispatch('labels/get');
     this.$store.dispatch('agents/get');
-
     this.initialize();
     this.$watch('$store.state.route', () => this.initialize());
     this.$watch('chatList.length', () => {
-      this.fetchConversation();
       this.setActiveChat();
     });
   },
 
   methods: {
+    onConversationLoad() {
+      this.fetchConversationIfUnavailable();
+    },
     initialize() {
       this.$store.dispatch('setActiveInbox', this.inboxId);
       this.setActiveChat();
     },
-
-    fetchConversation() {
+    fetchConversationIfUnavailable() {
       if (!this.conversationId) {
         return;
       }
@@ -99,7 +116,6 @@ export default {
       const [chat] = this.chatList.filter(c => c.id === conversationId);
       return chat;
     },
-
     setActiveChat() {
       if (this.conversationId) {
         const chat = this.findConversation();
@@ -107,15 +123,30 @@ export default {
           return;
         }
         this.$store.dispatch('setActiveChat', chat).then(() => {
-          bus.$emit('scrollToMessage');
+          bus.$emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
         });
       } else {
         this.$store.dispatch('clearSelectedState');
       }
     },
     onToggleContactPanel() {
-      this.isContactPanelOpen = !this.isContactPanelOpen;
+      this.updateUISettings({
+        is_contact_sidebar_open: !this.isContactPanelOpen,
+      });
+    },
+    onSearch() {
+      this.showSearchModal = true;
+    },
+    closeSearch() {
+      this.showSearchModal = false;
     },
   },
 };
 </script>
+<style lang="scss" scoped>
+.conversation-page {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+</style>

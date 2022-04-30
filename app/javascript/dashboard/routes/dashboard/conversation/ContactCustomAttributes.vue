@@ -1,9 +1,5 @@
 <template>
   <div class="custom-attributes--panel">
-    <contact-details-item
-      :title="$t('CONTACT_PANEL.CUSTOM_ATTRIBUTES.TITLE')"
-      icon="ion-code"
-    />
     <div
       v-for="attribute in listOfAttributes"
       :key="attribute"
@@ -13,19 +9,19 @@
         {{ attribute }}
       </div>
       <div>
-        {{ customAttributes[attribute] }}
+        <span v-html="valueWithLink(customAttributes[attribute])"></span>
       </div>
     </div>
+    <p v-if="!listOfAttributes.length">
+      {{ $t('CUSTOM_ATTRIBUTES.NOT_AVAILABLE') }}
+    </p>
   </div>
 </template>
 
 <script>
-import ContactDetailsItem from './ContactDetailsItem.vue';
+import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 
 export default {
-  components: {
-    ContactDetailsItem,
-  },
   props: {
     customAttributes: {
       type: Object,
@@ -40,17 +36,29 @@ export default {
       });
     },
   },
+  methods: {
+    valueWithLink(attribute) {
+      const parsedAttribute = this.parseAttributeToString(attribute);
+      const messageFormatter = new MessageFormatter(parsedAttribute);
+      return messageFormatter.formattedMessage;
+    },
+    parseAttributeToString(attribute) {
+      switch (typeof attribute) {
+        case 'string':
+          return attribute;
+        case 'object':
+          return JSON.stringify(attribute);
+        default:
+          return `${attribute}`;
+      }
+    },
+  },
 };
 </script>
 
 <style scoped>
 .custom-attributes--panel {
-  border-top: 1px solid var(--b-100);
-  padding: var(--space-normal);
-}
-
-.custom-attribute--row {
-  margin-bottom: var(--space-small);
+  margin-bottom: var(--space-normal);
 }
 
 .custom-attribute--row__attribute {

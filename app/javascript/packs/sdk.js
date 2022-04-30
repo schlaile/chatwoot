@@ -1,8 +1,21 @@
 import Cookies from 'js-cookie';
 import { IFrameHelper } from '../sdk/IFrameHelper';
-import { getBubbleView } from '../sdk/bubbleHelpers';
+import {
+  getBubbleView,
+  getDarkMode,
+  getWidgetStyle,
+} from '../sdk/settingsHelper';
+import {
+  computeHashForUserData,
+  getUserCookieName,
+  hasUserKeys,
+} from '../sdk/cookieHelpers';
 
 const runSDK = ({ baseUrl, websiteToken }) => {
+  if (window.$chatwoot) {
+    return;
+  }
+
   const chatwootSettings = window.chatwootSettings || {};
   window.$chatwoot = {
     baseUrl,
@@ -15,22 +28,47 @@ const runSDK = ({ baseUrl, websiteToken }) => {
     type: getBubbleView(chatwootSettings.type),
     launcherTitle: chatwootSettings.launcherTitle || '',
     showPopoutButton: chatwootSettings.showPopoutButton || false,
+    widgetStyle: getWidgetStyle(chatwootSettings.widgetStyle) || 'standard',
+    resetTriggered: false,
+    darkMode: getDarkMode(chatwootSettings.darkMode),
 
-    toggle() {
-      IFrameHelper.events.toggleBubble();
+    toggle(state) {
+      IFrameHelper.events.toggleBubble(state);
+    },
+
+    popoutChatWindow() {
+      IFrameHelper.events.popoutChatWindow({
+        baseUrl: window.$chatwoot.baseUrl,
+        websiteToken: window.$chatwoot.websiteToken,
+        locale: window.$chatwoot.locale,
+      });
     },
 
     setUser(identifier, user) {
-      if (typeof identifier === 'string' || typeof identifier === 'number') {
-        window.$chatwoot.identifier = identifier;
-        window.$chatwoot.user = user || {};
-        IFrameHelper.sendMessage('set-user', {
-          identifier,
-          user: window.$chatwoot.user,
-        });
-      } else {
+      if (typeof identifier !== 'string' && typeof identifier !== 'number') {
         throw new Error('Identifier should be a string or a number');
       }
+
+      if (!hasUserKeys(user)) {
+        throw new Error(
+          'User object should have one of the keys [avatar_url, email, name]'
+        );
+      }
+
+      const userCookieName = getUserCookieName();
+      const existingCookieValue = Cookies.get(userCookieName);
+      const hashToBeStored = computeHashForUserData({ identifier, user });
+      if (hashToBeStored === existingCookieValue) {
+        return;
+      }
+
+      window.$chatwoot.identifier = identifier;
+      window.$chatwoot.user = user;
+      IFrameHelper.sendMessage('set-user', { identifier, user });
+      Cookies.set(userCookieName, hashToBeStored, {
+        expires: 365,
+        sameSite: 'Lax',
+      });
     },
 
     setCustomAttributes(customAttributes = {}) {
@@ -69,11 +107,15 @@ const runSDK = ({ baseUrl, websiteToken }) => {
       }
 
       Cookies.remove('cw_conversation');
+      Cookies.remove(getUserCookieName());
+
       const iframe = IFrameHelper.getAppFrame();
       iframe.src = IFrameHelper.getUrl({
         baseUrl: window.$chatwoot.baseUrl,
         websiteToken: window.$chatwoot.websiteToken,
       });
+
+      window.$chatwoot.resetTriggered = true;
     },
   };
 
