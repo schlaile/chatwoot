@@ -41,8 +41,8 @@
       "REOPEN_ACTION": "Wieder öffnen",
       "OPEN_ACTION": "Öffnen",
       "OPEN": "Mehr",
-      "CLOSE": "Schließen",
-      "DETAILS": "Einzelheiten",
+      "CLOSE": "Weniger",
+      "DETAILS": "Details",
       "SNOOZED_UNTIL_TOMORROW": "Schlummern bis morgen",
       "SNOOZED_UNTIL_NEXT_WEEK": "Schlummern bis nächste Woche",
       "SNOOZED_UNTIL_NEXT_REPLY": "Schlummern bis zur nächsten Antwort"
