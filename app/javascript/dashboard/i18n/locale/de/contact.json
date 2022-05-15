@@ -10,8 +10,8 @@
     "VIEW_PROFILE": "Profil anzeigen",
     "BROWSER": "Browser",
     "OS": "Betriebssystem",
-    "INITIATED_FROM": "Initiiert von",
-    "INITIATED_AT": "Initiiert bei",
+    "INITIATED_FROM": "Gestartet durch",
+    "INITIATED_AT": "Gestartet am",
     "IP_ADDRESS": "IP-Adresse",
     "NEW_MESSAGE": "Neue Nachricht",
     "CONVERSATIONS": {
