@@ -7,7 +7,7 @@
     "ADD_NEW_FILTER": "Filter hinzufügen",
     "CLEAR_ALL_FILTERS": "Alle Filter löschen",
     "FILTER_DELETE_ERROR": "Sie sollten mindestens einen Filter zum Speichern haben",
-    "SUBMIT_BUTTON_LABEL": "Einreichen",
+    "SUBMIT_BUTTON_LABEL": "Speichern",
     "UPDATE_BUTTON_LABEL": "Segment aktualisieren",
     "CANCEL_BUTTON_LABEL": "Abbrechen",
     "CLEAR_BUTTON_LABEL": "Filter zurücksetzen",

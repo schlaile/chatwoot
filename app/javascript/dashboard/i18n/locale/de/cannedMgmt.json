@@ -34,7 +34,7 @@
           "PLACEHOLDER": "Bitte schreiben Sie die Nachricht, die Sie als Vorlage speichern möchten, um sie später zu verwenden.",
           "ERROR": "Nachricht ist erforderlich."
         },
-        "SUBMIT": "Einreichen"
+        "SUBMIT": "Speichern"
       },
       "API": {
         "SUCCESS_MESSAGE": "Vorgefertigte Antwort erfolgreich hinzugefügt.",
@@ -55,7 +55,7 @@
           "PLACEHOLDER": "Bitte schreiben Sie die Nachricht, die Sie als Antwortvorlage speichern möchten, um sie später zu verwenden.",
           "ERROR": "Nachricht ist erforderlich."
         },
-        "SUBMIT": "Einreichen"
+        "SUBMIT": "Speichern"
       },
       "BUTTON_TEXT": "Bearbeiten",
       "API": {
