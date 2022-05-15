@@ -87,7 +87,7 @@
   },
   "CONTACT_FORM": {
     "FORM": {
-      "SUBMIT": "Einreichen",
+      "SUBMIT": "Speichern",
       "CANCEL": "Abbrechen",
       "AVATAR": {
         "LABEL": "Kontaktbild"

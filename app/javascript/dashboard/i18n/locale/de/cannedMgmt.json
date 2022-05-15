@@ -30,7 +30,7 @@
           "PLACEHOLDER": "Bitte geben Sie einen Inhalt ein",
           "ERROR": "Inhalt ist erforderlich"
         },
-        "SUBMIT": "Einreichen"
+        "SUBMIT": "Speichern"
       },
       "API": {
         "SUCCESS_MESSAGE": "Vorgefertigte Antwort erfolgreich hinzugefügt",
@@ -51,7 +51,7 @@
           "PLACEHOLDER": "Bitte geben Sie einen Inhalt ein",
           "ERROR": "Inhalt ist erforderlich"
         },
-        "SUBMIT": "Abschicken"
+        "SUBMIT": "Speichern"
       },
       "BUTTON_TEXT": "Bearbeiten",
       "API": {
