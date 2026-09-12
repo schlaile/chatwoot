@@ -82,9 +82,9 @@ de:
     reply:
       email:
         header:
-          from_with_name: '%{assignee_name} von %{inbox_name} <%{from_email}>'
-          reply_with_name: '%{assignee_name} von %{inbox_name} <reply+%{reply_email}>'
-      email_subject: "Neue Nachrichten in dieser Unterhaltung"
+          from_with_name: '%{assignee_name} | musik Schlaile %{inbox_name} <%{from_email}>'
+          reply_with_name: '%{assignee_name} | musik Schlaile %{inbox_name} <reply+%{reply_email}>'
+      email_subject: "Neue Nachrichten auf www.schlaile.de"
       transcript_subject: "Gesprächsprotokoll"
     survey:
       response: "Bitte bewerten Sie diese Unterhaltung, %{link}"
