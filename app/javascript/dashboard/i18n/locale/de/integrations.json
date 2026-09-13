@@ -169,10 +169,10 @@
         "MAKE_FRIENDLY": "Nachrichtenton in freundlich ändern",
         "MAKE_FORMAL": "Formellen Ton verwenden",
         "SIMPLIFY": "Vereinfachen",
-        "CONFIDENT": "Use confident tone",
-        "PROFESSIONAL": "Use professional tone",
-        "CASUAL": "Use casual tone",
-        "STRAIGHTFORWARD": "Use straightforward tone"
+        "CONFIDENT": "Selbstsicher formulieren",
+        "PROFESSIONAL": "Professionell formulieren",
+        "CASUAL": "Locker formulieren",
+        "STRAIGHTFORWARD": "Direkt formulieren"
       },
       "REPLY_OPTIONS": {
         "IMPROVE_REPLY": "Antwort verbessern",
