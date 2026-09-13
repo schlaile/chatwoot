@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_14_000000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_13_000000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1135,6 +1135,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_14_000000) do
     t.datetime "updated_at", precision: nil, null: false
     t.string "channel_type"
     t.boolean "enable_auto_assignment", default: true
+    t.boolean "allow_cross_inbox_assignment", default: false, null: false
     t.boolean "greeting_enabled", default: false
     t.string "greeting_message"
     t.string "email_address"

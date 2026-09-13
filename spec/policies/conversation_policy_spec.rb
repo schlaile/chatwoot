@@ -62,6 +62,24 @@ RSpec.describe ConversationPolicy, type: :policy do
       end
     end
 
+    context 'when agent is assigned through an enabled cross-inbox handover' do
+      let(:inbox) { create(:inbox, account: account, allow_cross_inbox_assignment: true) }
+      let(:conversation) { create(:conversation, account: account, inbox: inbox, assignee: agent) }
+
+      it 'allows access to the assigned conversation' do
+        expect(subject).to permit(agent_context, conversation)
+      end
+    end
+
+    context 'when cross-inbox handover is disabled' do
+      let(:inbox) { create(:inbox, account: account, allow_cross_inbox_assignment: false) }
+      let(:conversation) { create(:conversation, account: account, inbox: inbox, assignee: agent) }
+
+      it 'does not grant access merely through an assignment' do
+        expect(subject).not_to permit(agent_context, conversation)
+      end
+    end
+
     context 'when agent lacks inbox and team access' do
       let(:conversation) { create(:conversation, account: account) }
 

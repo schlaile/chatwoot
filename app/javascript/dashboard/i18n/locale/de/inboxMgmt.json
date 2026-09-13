@@ -872,6 +872,11 @@
       "ENABLE_EMAIL_COLLECT_BOX": "E-Mail-Sammelbox aktivieren",
       "ENABLE_EMAIL_COLLECT_BOX_SUB_TEXT": "E-Mail-Sammelbox für neue Konversation aktivieren oder deaktivieren",
       "AUTO_ASSIGNMENT": "Aktivieren Sie die automatische Zuweisung",
+      "CROSS_INBOX_ASSIGNMENT": {
+        "TITLE": "Postfachübergreifende Übergabe",
+        "LABEL": "Zuweisungen außerhalb dieses Postfachs erlauben",
+        "SUBTEXT": "Mitglieder dieses Postfachs können einzelne Gespräche an jeden bestätigten Mitarbeitenden dieses Kontos übergeben. Die ausgewählte Person erhält nur Zugriff auf dieses Gespräch und dessen Zuweisungsbenachrichtigungen."
+      },
       "SENDER_NAME_SECTION": "Aktivieren Sie den Agentennamen in der E-Mail",
       "SENDER_NAME_SECTION_TEXT": "Aktivieren/Deaktivieren Sie die Anzeige des Agentennamens in der E-Mail. Wenn deaktiviert, wird der Firmenname angezeigt",
       "ENABLE_CONTINUITY_VIA_EMAIL": "Konversationskontinuität per E-Mail aktivieren",

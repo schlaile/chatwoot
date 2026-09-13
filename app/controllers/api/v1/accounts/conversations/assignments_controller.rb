@@ -19,6 +19,10 @@ class Api::V1::Accounts::Conversations::AssignmentsController < Api::V1::Account
       assignee_type: params[:assignee_type]
     ).perform
 
+    if invalid_assignee?(resource)
+      return render json: { error: 'Agent is not eligible for this conversation' }, status: :unprocessable_entity
+    end
+
     render_agent(resource)
   end
 
@@ -44,5 +48,9 @@ class Api::V1::Accounts::Conversations::AssignmentsController < Api::V1::Account
 
   def agent_bot_assignment?
     params[:assignee_type].to_s == 'AgentBot'
+  end
+
+  def invalid_assignee?(resource)
+    (params[:assignee_id].present? || agent_bot_assignment?) && resource.blank?
   end
 end

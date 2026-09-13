@@ -17,7 +17,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   # Deprecated: This API will be removed in 2.7.0
   def assignable_agents
-    @assignable_agents = @inbox.assignable_agents
+    @assignable_agents = @inbox.assignment_agents
   end
 
   def campaigns
@@ -194,7 +194,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   def inbox_attributes
     [:name, :avatar, :greeting_enabled, :greeting_message, :enable_email_collect, :csat_survey_enabled,
-     :enable_auto_assignment, :working_hours_enabled, :out_of_office_message, :timezone, :allow_messages_after_resolved,
+     :enable_auto_assignment, :allow_cross_inbox_assignment, :working_hours_enabled, :out_of_office_message, :timezone, :allow_messages_after_resolved,
      :lock_to_single_conversation, :portal_id, :sender_name_type, :business_name,
      { csat_config: [:display_type, :message, :button_text, :language,
                      { survey_rules: [:operator, { values: [] }],

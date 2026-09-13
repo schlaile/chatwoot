@@ -903,6 +903,11 @@
       "ENABLE_EMAIL_COLLECT_BOX": "Enable email collect box",
       "ENABLE_EMAIL_COLLECT_BOX_SUB_TEXT": "Enable or disable email collect box on new conversation",
       "AUTO_ASSIGNMENT": "Enable auto assignment",
+      "CROSS_INBOX_ASSIGNMENT": {
+        "TITLE": "Cross-inbox handover",
+        "LABEL": "Allow assignments outside this inbox",
+        "SUBTEXT": "Inbox members can hand an individual conversation to any confirmed agent in this account. The selected agent receives access only to that conversation and its assignment notifications."
+      },
       "SENDER_NAME_SECTION": "Enable Agent Name in Email",
       "SENDER_NAME_SECTION_TEXT": "Enable/Disable showing Agent's name in email, if disabled it will show business name",
       "ENABLE_CONTINUITY_VIA_EMAIL": "Enable conversation continuity via email",

@@ -116,6 +116,26 @@ RSpec.describe Inbox do
     end
   end
 
+  describe '#assignment_agents' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:inbox_agent) { create(:user, account: account, role: :agent) }
+    let(:other_agent) { create(:user, account: account, role: :agent) }
+    let(:administrator) { create(:user, account: account, role: :administrator) }
+
+    before { create(:inbox_member, inbox: inbox, user: inbox_agent) }
+
+    it 'limits assignment to inbox members and administrators by default' do
+      expect(inbox.assignment_agents).to contain_exactly(inbox_agent, administrator)
+    end
+
+    it 'includes other account agents when cross-inbox assignment is enabled' do
+      inbox.update!(allow_cross_inbox_assignment: true)
+
+      expect(inbox.assignment_agents).to include(inbox_agent, other_agent, administrator)
+    end
+  end
+
   describe '#facebook?' do
     let(:inbox) do
       FactoryBot.build(:inbox, channel: channel_val)

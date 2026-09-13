@@ -14,7 +14,7 @@ class ConversationPolicy < ApplicationPolicy
   private
 
   def agent_can_view_conversation?
-    inbox_access? || team_access?
+    inbox_access? || team_access? || cross_inbox_assignment_access?
   end
 
   def administrator?
@@ -37,6 +37,10 @@ class ConversationPolicy < ApplicationPolicy
 
   def assigned_to_user?
     record.assignee_id == user.id
+  end
+
+  def cross_inbox_assignment_access?
+    record.inbox.allow_cross_inbox_assignment? && assigned_to_user?
   end
 
   def participant?

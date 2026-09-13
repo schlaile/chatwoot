@@ -63,6 +63,19 @@ RSpec.describe 'Assignable Agents API', type: :request do
         expect(response_data.pluck(:role)).to include('agent', 'administrator')
       end
 
+      it 'includes all account agents when cross-inbox assignment is enabled' do
+        inbox1.update!(allow_cross_inbox_assignment: true)
+        inbox2.update!(allow_cross_inbox_assignment: true)
+
+        get "/api/v1/accounts/#{account.id}/assignable_agents",
+            params: { inbox_ids: [inbox1.id, inbox2.id] },
+            headers: agent1.create_new_auth_token,
+            as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['payload'].pluck('id')).to include(agent2.id)
+      end
+
       context 'with Agent Bots' do
         let!(:account_bot) { create(:agent_bot, account: account, name: 'Account bot') }
         let!(:global_bot) { create(:agent_bot, account: nil, name: 'Global bot') }

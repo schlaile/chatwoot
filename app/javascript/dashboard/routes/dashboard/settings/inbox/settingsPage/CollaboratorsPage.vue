@@ -33,6 +33,7 @@ const { isEnterprise } = useConfig();
 const selectedAgentIds = ref([]);
 const isAgentListUpdating = ref(false);
 const enableAutoAssignment = ref(false);
+const allowCrossInboxAssignment = ref(false);
 const maxAssignmentLimit = ref(null);
 const assignmentPolicy = ref(null);
 const isLoadingPolicy = ref(false);
@@ -261,6 +262,20 @@ const handleToggleAutoAssignment = async val => {
   }
 };
 
+const handleToggleCrossInboxAssignment = async val => {
+  allowCrossInboxAssignment.value = val;
+  try {
+    await store.dispatch('inboxes/updateInbox', {
+      id: props.inbox.id,
+      formData: false,
+      allow_cross_inbox_assignment: val,
+    });
+    useAlert(t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+  } catch (error) {
+    useAlert(t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
+  }
+};
+
 const updateAgents = async () => {
   isAgentListUpdating.value = true;
   try {
@@ -343,6 +358,7 @@ const deleteAssignmentPolicy = async () => {
 
 const setDefaults = () => {
   enableAutoAssignment.value = props.inbox.enable_auto_assignment;
+  allowCrossInboxAssignment.value = props.inbox.allow_cross_inbox_assignment;
   maxAssignmentLimit.value =
     props.inbox.auto_assignment_config?.max_assignment_limit || null;
   fetchAttachedAgents();
@@ -666,6 +682,23 @@ onMounted(() => {
           </template>
         </template>
       </SettingsToggleSection>
+    </SettingsAccordion>
+
+    <SettingsAccordion
+      :title="$t('INBOX_MGMT.SETTINGS_POPUP.CROSS_INBOX_ASSIGNMENT.TITLE')"
+      class="mt-6"
+    >
+      <SettingsToggleSection
+        v-model="allowCrossInboxAssignment"
+        compact
+        :header="
+          $t('INBOX_MGMT.SETTINGS_POPUP.CROSS_INBOX_ASSIGNMENT.LABEL')
+        "
+        :description="
+          $t('INBOX_MGMT.SETTINGS_POPUP.CROSS_INBOX_ASSIGNMENT.SUBTEXT')
+        "
+        @update:model-value="handleToggleCrossInboxAssignment"
+      />
     </SettingsAccordion>
 
     <woot-modal

@@ -55,6 +55,32 @@ RSpec.describe 'Conversation Assignment API', type: :request do
         expect(conversation.reload.assignee).to eq(agent)
       end
 
+      it 'assigns an agent outside the inbox only when cross-inbox handover is enabled' do
+        external_agent = create(:user, account: account, role: :agent)
+        conversation.inbox.update!(allow_cross_inbox_assignment: true)
+
+        post api_v1_account_conversation_assignments_url(account_id: account.id, conversation_id: conversation.display_id),
+             params: { assignee_id: external_agent.id },
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(conversation.reload.assignee).to eq(external_agent)
+      end
+
+      it 'does not assign an agent outside the inbox when cross-inbox handover is disabled' do
+        external_agent = create(:user, account: account, role: :agent)
+        conversation.update!(assignee: agent)
+
+        post api_v1_account_conversation_assignments_url(account_id: account.id, conversation_id: conversation.display_id),
+             params: { assignee_id: external_agent.id },
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(conversation.reload.assignee).to eq(agent)
+      end
+
       it 'assigns an agent bot to the conversation' do
         params = { assignee_id: agent_bot.id, assignee_type: 'AgentBot' }
 
