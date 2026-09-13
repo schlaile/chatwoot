@@ -175,22 +175,22 @@
         "STRAIGHTFORWARD": "Use straightforward tone"
       },
       "REPLY_OPTIONS": {
-        "IMPROVE_REPLY": "Improve reply",
-        "IMPROVE_REPLY_SELECTION": "Improve the selection",
+        "IMPROVE_REPLY": "Antwort verbessern",
+        "IMPROVE_REPLY_SELECTION": "Auswahl verbessern",
         "CHANGE_TONE": {
-          "TITLE": "Change tone",
+          "TITLE": "Tonfall ändern",
           "OPTIONS": {
             "PROFESSIONAL": "Professionell",
-            "CASUAL": "Casual",
-            "STRAIGHTFORWARD": "Straightforward",
-            "CONFIDENT": "Confident",
+            "CASUAL": "Locker",
+            "STRAIGHTFORWARD": "Direkt",
+            "CONFIDENT": "Selbstsicher",
             "FRIENDLY": "Freundlich"
           }
         },
-        "GRAMMAR": "Fix grammar & spelling",
-        "SUGGESTION": "Suggest a reply",
-        "SUMMARIZE": "Summarize the conversation",
-        "ASK_COPILOT": "Ask Copilot"
+        "GRAMMAR": "Rechtschreibung und Grammatik korrigieren",
+        "SUGGESTION": "Antwort vorschlagen",
+        "SUMMARIZE": "Unterhaltung zusammenfassen",
+        "ASK_COPILOT": "Copilot fragen"
       },
       "ASSISTANCE_MODAL": {
         "DRAFT_TITLE": "Inhalt entwerfen",

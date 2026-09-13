@@ -11,7 +11,9 @@ RSpec.describe Llm::FeatureRouter do
     end
 
     it 'returns the feature default without an account' do
-      resolved = described_class.resolve(feature: 'editor')
+      resolved = with_modified_env('CAPTAIN_OPEN_AI_MODEL' => nil) do
+        described_class.resolve(feature: 'editor')
+      end
 
       expect(resolved).to eq(
         feature: 'editor',
@@ -19,6 +21,34 @@ RSpec.describe Llm::FeatureRouter do
         model: 'gpt-4.1-mini',
         source: :default
       )
+    end
+
+    context 'when CAPTAIN_OPEN_AI_MODEL is set' do
+      around do |example|
+        with_modified_env('CAPTAIN_OPEN_AI_MODEL' => 'gpt-5.5', &example)
+      end
+
+      it 'uses it for editor tasks ahead of account and built-in defaults' do
+        account.update!(captain_models: { 'editor' => 'gpt-4.1' })
+
+        resolved = described_class.resolve(feature: 'editor', account: account)
+
+        expect(resolved).to eq(
+          feature: 'editor',
+          provider: 'openai',
+          model: 'gpt-5.5',
+          source: :environment_override
+        )
+      end
+
+      it 'does not apply the chat model to non-editor features' do
+        resolved = described_class.resolve(feature: 'audio_transcription', account: account)
+
+        expect(resolved).to include(
+          model: Llm::Models.default_model_for('audio_transcription'),
+          source: :default
+        )
+      end
     end
 
     it 'uses a valid account model override' do

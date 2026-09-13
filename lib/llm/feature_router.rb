@@ -21,6 +21,9 @@ module Llm::FeatureRouter
     private
 
     def model_and_source(account, feature_key)
+      environment_model = environment_model_override(feature_key)
+      return [environment_model, :environment_override] if environment_model.present?
+
       account_model = account_model_override(account, feature_key)
       return [account_model, :account_override] if account_model.present?
 
@@ -36,6 +39,17 @@ module Llm::FeatureRouter
       return model if Llm::Models.valid_model_for?(feature_key, model)
     end
 
+    # Self-hosted installations may need to route editor tasks to a compatible
+    # OpenAI-style provider without storing a model choice per account. Keep
+    # this deliberately scoped to editor tasks: other LLM features include
+    # embeddings and audio models, for which a chat-completions model is not a
+    # safe replacement.
+    def environment_model_override(feature_key)
+      return unless feature_key == 'editor'
+
+      ENV.fetch('CAPTAIN_OPEN_AI_MODEL', nil).presence
+    end
+
     def installation_model_override(feature_key)
       return unless feature_key == 'conversation_completion'
       return unless ChatwootApp.self_hosted_enterprise?
@@ -44,7 +58,7 @@ module Llm::FeatureRouter
     end
 
     def provider_for(model, source)
-      Llm::Models.provider_for(model) || ('openai' if source == :installation_override)
+      Llm::Models.provider_for(model) || ('openai' if %i[environment_override installation_override].include?(source))
     end
 
     def captain_v2_assistant_model(account, feature_key)
