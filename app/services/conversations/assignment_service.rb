@@ -14,8 +14,6 @@ class Conversations::AssignmentService
   attr_reader :conversation, :assignee_id, :assignee_type
 
   def assign_agent
-    return unless assignee_id.blank? || assignee.present?
-
     conversation.with_lock do
       if assignee.present? && conversation.assignee_agent_bot_id.present? && conversation.pending?
         conversation.status = :open
@@ -41,10 +39,7 @@ class Conversations::AssignmentService
   end
 
   def assignee
-    @assignee ||= begin
-      agent = conversation.account.users.find_by(id: assignee_id)
-      agent if conversation.inbox.agent_assignable_to_conversation?(agent)
-    end
+    @assignee ||= conversation.account.users.find_by(id: assignee_id)
   end
 
   def agent_bot

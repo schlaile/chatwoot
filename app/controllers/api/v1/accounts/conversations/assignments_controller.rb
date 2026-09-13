@@ -13,15 +13,13 @@ class Api::V1::Accounts::Conversations::AssignmentsController < Api::V1::Account
   private
 
   def set_agent
+    return render json: { error: 'Agent is not eligible for this conversation' }, status: :unprocessable_entity if invalid_assignee?
+
     resource = Conversations::AssignmentService.new(
       conversation: @conversation,
       assignee_id: params[:assignee_id],
       assignee_type: params[:assignee_type]
     ).perform
-
-    if invalid_assignee?(resource)
-      return render json: { error: 'Agent is not eligible for this conversation' }, status: :unprocessable_entity
-    end
 
     render_agent(resource)
   end
@@ -50,7 +48,10 @@ class Api::V1::Accounts::Conversations::AssignmentsController < Api::V1::Account
     params[:assignee_type].to_s == 'AgentBot'
   end
 
-  def invalid_assignee?(resource)
-    (params[:assignee_id].present? || agent_bot_assignment?) && resource.blank?
+  def invalid_assignee?
+    return false if params[:assignee_id].blank? || agent_bot_assignment?
+
+    agent = Current.account.users.find_by(id: params[:assignee_id])
+    !@conversation.inbox.agent_assignable_to_conversation?(agent)
   end
 end

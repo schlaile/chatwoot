@@ -123,7 +123,12 @@ RSpec.describe Inbox do
     let(:other_agent) { create(:user, account: account, role: :agent) }
     let(:administrator) { create(:user, account: account, role: :administrator) }
 
-    before { create(:inbox_member, inbox: inbox, user: inbox_agent) }
+    before do
+      inbox_agent
+      other_agent
+      administrator
+      create(:inbox_member, inbox: inbox, user: inbox_agent)
+    end
 
     it 'limits assignment to inbox members and administrators by default' do
       expect(inbox.assignment_agents).to contain_exactly(inbox_agent, administrator)
