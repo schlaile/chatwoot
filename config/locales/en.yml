@@ -673,3 +673,30 @@ en:
         button: 'Resend confirmation email'
         sent: 'Confirmation email sent.'
         already_confirmed: 'User is already confirmed.'
+  mailers:
+    subjects:
+      agent_notifications:
+        conversation_creation: '%{agent_name}, A new conversation [ID - %{conversation_id}] has been created in %{inbox_name}.'
+        conversation_assignment: '%{agent_name}, A new conversation [ID - %{conversation_id}] has been assigned to you.'
+        conversation_mention: '%{agent_name}, You have been mentioned in conversation [ID - %{conversation_id}]'
+        assigned_conversation_new_message: '%{agent_name}, New message in your assigned conversation [ID - %{conversation_id}].'
+        participating_conversation_new_message: '%{agent_name}, New message in your participating conversation [ID - %{conversation_id}].'
+      team_notifications:
+        automation_rule: 'This email has been sent via automation rule actions.'
+      channel_notifications:
+        facebook_disconnect: 'Your Facebook page connection has expired'
+        instagram_disconnect: 'Your Instagram connection has expired'
+        tiktok_disconnect: 'Your TikTok connection has expired'
+        whatsapp_disconnect: 'Your Whatsapp connection has expired'
+        email_disconnect: 'Your email inbox has been disconnected. Please update the credentials for SMTP/IMAP'
+      integration_notifications:
+        slack_disconnect: 'Your Slack integration has expired'
+        dialogflow_disconnect: 'Your Dialogflow integration was disconnected'
+        openai_disconnect: 'Your OpenAI integration was disconnected'
+      account_notifications:
+        account_deletion_user_initiated: 'Your Chatwoot account deletion has been scheduled'
+        account_deletion_for_inactivity: 'Your Chatwoot account is scheduled for deletion due to inactivity'
+        contact_import_complete: 'Contact Import Completed'
+        contact_import_failed: 'Contact Import Failed'
+        contact_export_complete: "Your contact's export file is available to download."
+        automation_rule_disabled: 'Automation rule disabled due to validation errors.'

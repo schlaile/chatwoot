@@ -641,3 +641,30 @@ de:
       no_subscriptions_to_test: 'Wähle mindestens ein Abonnement zum Testen aus.'
       no_subscriptions_to_delete: 'Wähle mindestens ein Abonnement zum Löschen aus.'
       subscriptions_deleted: "%{count} Abonnement(s) gelöscht. Die Geräte des Benutzers werden beim nächsten Start der App erneut registriert."
+  mailers:
+    subjects:
+      agent_notifications:
+        conversation_creation: '%{agent_name}, eine neue Unterhaltung [ID – %{conversation_id}] wurde in %{inbox_name} erstellt.'
+        conversation_assignment: '%{agent_name}, dir wurde eine neue Unterhaltung [ID – %{conversation_id}] zugewiesen.'
+        conversation_mention: '%{agent_name}, du wurdest in Unterhaltung [ID – %{conversation_id}] erwähnt.'
+        assigned_conversation_new_message: '%{agent_name}, neue Nachricht in deiner zugewiesenen Unterhaltung [ID – %{conversation_id}].'
+        participating_conversation_new_message: '%{agent_name}, neue Nachricht in einer Unterhaltung, an der du beteiligt bist [ID – %{conversation_id}].'
+      team_notifications:
+        automation_rule: 'Diese E-Mail wurde durch eine Automatisierungsregel ausgelöst.'
+      channel_notifications:
+        facebook_disconnect: 'Die Verbindung zu deiner Facebook-Seite ist abgelaufen'
+        instagram_disconnect: 'Die Instagram-Verbindung ist abgelaufen'
+        tiktok_disconnect: 'Die TikTok-Verbindung ist abgelaufen'
+        whatsapp_disconnect: 'Die WhatsApp-Verbindung ist abgelaufen'
+        email_disconnect: 'Dein E-Mail-Postfach wurde getrennt. Bitte aktualisiere die SMTP-/IMAP-Zugangsdaten.'
+      integration_notifications:
+        slack_disconnect: 'Die Slack-Integration ist abgelaufen'
+        dialogflow_disconnect: 'Die Dialogflow-Integration wurde getrennt'
+        openai_disconnect: 'Die OpenAI-Integration wurde getrennt'
+      account_notifications:
+        account_deletion_user_initiated: 'Die Löschung deines Chatwoot-Kontos wurde geplant'
+        account_deletion_for_inactivity: 'Dein Chatwoot-Konto wird wegen Inaktivität zur Löschung vorgemerkt'
+        contact_import_complete: 'Kontaktimport abgeschlossen'
+        contact_import_failed: 'Kontaktimport fehlgeschlagen'
+        contact_export_complete: 'Die Exportdatei deiner Kontakte steht zum Herunterladen bereit.'
+        automation_rule_disabled: 'Automatisierungsregel wegen Validierungsfehlern deaktiviert.'
