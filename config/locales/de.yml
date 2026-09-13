@@ -320,11 +320,11 @@ de:
         removed: '%{user_name} hat die Priorität entfernt'
       assignee:
         self_assigned: '%{user_name} hat sich dieses Gespräch selbst zugewiesen'
-        assigned: '%{user_name} von %{assignee_name} zugewiesen'
+        assigned: 'Von %{user_name} an %{assignee_name} zugewiesen'
         removed: 'Gespräch nicht zugewiesen von %{user_name}'
       team:
-        assigned: 'Zugewiesen an %{team_name} von %{user_name}'
-        assigned_with_assignee: 'Zugewiesen an %{assignee_name} über %{team_name} von %{user_name}'
+        assigned: 'Von %{user_name} an %{team_name} zugewiesen'
+        assigned_with_assignee: 'Von %{user_name} über %{team_name} an %{assignee_name} zugewiesen'
         removed: 'Entfernt aus %{team_name} von %{user_name}'
       labels:
         added: '%{user_name} hat %{labels} hinzugefügt'

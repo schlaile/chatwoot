@@ -308,12 +308,12 @@
     }
   },
   "SIDEBAR": {
-    "NO_ITEMS": "No items",
+    "NO_ITEMS": "Keine Einträge",
     "CURRENTLY_VIEWING_ACCOUNT": "Wird gerade angezeigt:",
     "SWITCH": "Wechseln",
     "INBOX_VIEW": "Posteingangsansicht",
     "CONVERSATIONS": "Gespräche",
-    "INBOX": "My Inbox",
+    "INBOX": "Mein Posteingang",
     "ALL_CONVERSATIONS": "Alle Konversationen",
     "MENTIONED_CONVERSATIONS": "Erwähnungen",
     "PARTICIPATING_CONVERSATIONS": "Beteiligt",
