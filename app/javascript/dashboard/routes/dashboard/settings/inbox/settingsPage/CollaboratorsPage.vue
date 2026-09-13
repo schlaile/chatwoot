@@ -691,9 +691,7 @@ onMounted(() => {
       <SettingsToggleSection
         v-model="allowCrossInboxAssignment"
         compact
-        :header="
-          $t('INBOX_MGMT.SETTINGS_POPUP.CROSS_INBOX_ASSIGNMENT.LABEL')
-        "
+        :header="$t('INBOX_MGMT.SETTINGS_POPUP.CROSS_INBOX_ASSIGNMENT.LABEL')"
         :description="
           $t('INBOX_MGMT.SETTINGS_POPUP.CROSS_INBOX_ASSIGNMENT.SUBTEXT')
         "
