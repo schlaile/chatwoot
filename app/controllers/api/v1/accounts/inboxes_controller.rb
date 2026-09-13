@@ -1,10 +1,10 @@
 class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   include Api::V1::InboxesHelper
-  include Api::V1::Accounts::Concerns::WhatsappHealthManagement
   before_action :fetch_inbox, except: [:index, :create]
   before_action :fetch_agent_bot, only: [:set_agent_bot]
   # we are already handling the authorization in fetch inbox
   before_action :check_authorization, except: [:show]
+  include Api::V1::Accounts::Concerns::WhatsappHealthManagement
 
   def index
     @inboxes = policy_scope(Current.account.inboxes)
@@ -193,9 +193,8 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   def inbox_attributes
     [:name, :avatar, :greeting_enabled, :greeting_message, :enable_email_collect, :csat_survey_enabled,
-     :enable_auto_assignment, :allow_cross_inbox_assignment, :working_hours_enabled, :out_of_office_message, :timezone,
-     :allow_messages_after_resolved,
-     :lock_to_single_conversation, :portal_id, :sender_name_type, :business_name,
+     :enable_auto_assignment, :allow_cross_inbox_assignment, :working_hours_enabled, :out_of_office_message, :allow_messages_after_resolved,
+     :timezone, :lock_to_single_conversation, :portal_id, :sender_name_type, :business_name,
      { csat_config: [:display_type, :message, :button_text, :language,
                      { survey_rules: [:operator, { values: [] }],
                        template: [:name, :template_id, :friendly_name, :content_sid, :approval_sid, :created_at, :language, :status] }] }]
