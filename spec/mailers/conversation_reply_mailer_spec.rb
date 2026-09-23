@@ -62,10 +62,10 @@ RSpec.describe ConversationReplyMailer do
 
       it 'localizes the customer notification copy using the account locale' do
         account.update!(locale: :de)
-        message.conversation.account.reload
+        localized_mail = described_class.with(account: account).reply_with_summary(message.conversation, message.id).deliver_now
 
-        expect(mail.body.decoded).to include("Hallo #{message.conversation.contact.name},")
-        expect(mail.body.decoded).to include('Es gibt neue Nachrichten in Ihrer Unterhaltung.')
+        expect(localized_mail.body.decoded).to include("Hallo #{message.conversation.contact.name},")
+        expect(localized_mail.body.decoded).to include('Es gibt neue Nachrichten in Ihrer Unterhaltung.')
       end
 
       it 'renders the subject in conversation as reply' do
