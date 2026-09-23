@@ -1,4 +1,6 @@
 class AgentNotifications::ConversationNotificationsMailer < ApplicationMailer
+  TRANSLATIONS_KEY = 'mailers.agent_notifications'.freeze
+
   def conversation_creation(conversation, agent, _user)
     return unless smtp_config_set_or_development?
 
@@ -79,7 +81,33 @@ class AgentNotifications::ConversationNotificationsMailer < ApplicationMailer
   private
 
   def liquid_locals
-    super.merge({ notification_settings_url: "#{app_account_url(@conversation.account_id)}/profile/settings" })
+    super.merge(
+      notification_settings_url: "#{app_account_url(@conversation.account_id)}/profile/settings",
+      agent_notification: agent_notification_translations
+    )
+  end
+
+  def agent_notification_translations
+    I18n.t(TRANSLATIONS_KEY).merge(
+      greeting: I18n.t("#{TRANSLATIONS_KEY}.greeting", name: @agent.available_name),
+      conversation_creation_after_id: I18n.t(
+        "#{TRANSLATIONS_KEY}.conversation_creation_after_id", inbox_name: @conversation.inbox&.sanitized_name
+      )
+    ).merge(sla_notification_translations).stringify_keys
+  end
+
+  def sla_notification_translations
+    %i[sla_missed_first_response sla_missed_next_response sla_missed_resolution].index_with do |key|
+      I18n.t("#{TRANSLATIONS_KEY}.#{key}", **sla_interpolation)
+    end
+  end
+
+  def sla_interpolation
+    {
+      conversation_id: @conversation.display_id,
+      inbox_name: @conversation.inbox&.sanitized_name,
+      policy_name: @sla_policy&.name
+    }
   end
 
   def liquid_droppables

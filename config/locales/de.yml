@@ -657,6 +657,29 @@ de:
       no_subscriptions_to_delete: 'Wähle mindestens ein Abonnement zum Löschen aus.'
       subscriptions_deleted: "%{count} Abonnement(s) gelöscht. Die Geräte des Benutzers werden beim nächsten Start der App erneut registriert."
   mailers:
+    layout:
+      sent_by: 'Diese E-Mail wurde gesendet von'
+      notification_reason: 'Sie erhalten diese E-Mail, weil Benachrichtigungen für Ihr Konto aktiviert sind.'
+      manage_notification_preferences: 'Benachrichtigungseinstellungen verwalten'
+    agent_notifications:
+      greeting: 'Hallo %{name},'
+      assigned_new_message: 'Sie haben eine neue Nachricht in einer Ihnen zugewiesenen Unterhaltung erhalten.'
+      participating_new_message: 'Sie haben eine neue Nachricht in einer Unterhaltung erhalten, an der Sie beteiligt sind.'
+      open_conversation: 'Unterhaltung öffnen'
+      conversation_creation_before_id: 'Eine neue Unterhaltung'
+      conversation_creation_after_id: 'wurde in %{inbox_name} erstellt.'
+      wrote: 'schrieb:'
+      conversation_assigned: 'Ihnen wurde eine neue Unterhaltung zugewiesen.'
+      you: 'Sie'
+      attachment: 'Anhang'
+      view_attachment: 'Anhang ansehen'
+      mentioned: 'Sie wurden in einer Unterhaltung erwähnt.'
+      previous_messages: 'Vorherige Nachrichten:'
+      view_message: 'Nachricht anzeigen'
+      sla_missed_first_response: 'Die Unterhaltung #%{conversation_id} in %{inbox_name} hat unter der SLA-Richtlinie %{policy_name} das Ziel für die erste Antwort verfehlt.'
+      sla_missed_next_response: 'Die Unterhaltung #%{conversation_id} in %{inbox_name} hat unter der SLA-Richtlinie %{policy_name} das Ziel für die nächste Antwort verfehlt.'
+      sla_missed_resolution: 'Die Unterhaltung #%{conversation_id} in %{inbox_name} hat unter der SLA-Richtlinie %{policy_name} das Ziel für die Lösungszeit verfehlt.'
+      address_immediately: 'Bitte kümmern Sie sich umgehend darum.'
     subjects:
       agent_notifications:
         conversation_creation: '%{agent_name}, eine neue Unterhaltung [ID – %{conversation_id}] wurde in %{inbox_name} erstellt.'

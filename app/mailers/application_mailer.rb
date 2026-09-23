@@ -55,7 +55,12 @@ class ApplicationMailer < ActionMailer::Base
     # expose variables you want to be exposed in liquid
     locals = {
       global_config: GlobalConfig.get('BRAND_NAME', 'BRAND_URL'),
-      action_url: @action_url
+      action_url: @action_url,
+      mailer: {
+        sent_by: I18n.t('mailers.layout.sent_by'),
+        notification_reason: I18n.t('mailers.layout.notification_reason'),
+        manage_notification_preferences: I18n.t('mailers.layout.manage_notification_preferences')
+      }.stringify_keys
     }
 
     locals.merge({ attachment_url: @attachment_url }) if @attachment_url

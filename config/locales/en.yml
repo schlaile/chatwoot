@@ -689,6 +689,29 @@ en:
         sent: 'Confirmation email sent.'
         already_confirmed: 'User is already confirmed.'
   mailers:
+    layout:
+      sent_by: 'This email was sent by'
+      notification_reason: 'You are receiving this email because email notifications are enabled for your account.'
+      manage_notification_preferences: 'Manage notification preferences'
+    agent_notifications:
+      greeting: 'Hi %{name},'
+      assigned_new_message: 'You have received a new message in your assigned conversation.'
+      participating_new_message: 'You have received a new message in a conversation you are participating in.'
+      open_conversation: 'Open conversation'
+      conversation_creation_before_id: 'A new conversation'
+      conversation_creation_after_id: 'has been created in %{inbox_name}.'
+      wrote: 'wrote:'
+      conversation_assigned: 'A new conversation has been assigned to you.'
+      you: 'You'
+      attachment: 'Attachment'
+      view_attachment: 'View attachment'
+      mentioned: 'You have been mentioned in a conversation.'
+      previous_messages: 'Previous messages:'
+      view_message: 'View message'
+      sla_missed_first_response: 'Conversation #%{conversation_id} in %{inbox_name} missed the first-response SLA under policy %{policy_name}.'
+      sla_missed_next_response: 'Conversation #%{conversation_id} in %{inbox_name} missed the next-response SLA under policy %{policy_name}.'
+      sla_missed_resolution: 'Conversation #%{conversation_id} in %{inbox_name} missed the resolution-time SLA under policy %{policy_name}.'
+      address_immediately: 'Please address this immediately.'
     subjects:
       agent_notifications:
         conversation_creation: '%{agent_name}, A new conversation [ID - %{conversation_id}] has been created in %{inbox_name}.'

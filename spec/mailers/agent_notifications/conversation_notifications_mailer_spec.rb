@@ -91,6 +91,16 @@ RSpec.describe AgentNotifications::ConversationNotificationsMailer do
       OnlineStatusTracker.update_presence(conversation.account.id, 'User', agent.id)
       expect(mail).to be_nil
     end
+
+    context 'when the account locale is German' do
+      before { account.update!(locale: 'de') }
+
+      it 'renders the body in German' do
+        expect(mail.body.decoded).to include("Hallo #{agent.available_name},")
+        expect(mail.body.decoded).to include('Sie haben eine neue Nachricht in einer Ihnen zugewiesenen Unterhaltung erhalten.')
+        expect(mail.body.decoded).to include('Unterhaltung öffnen')
+      end
+    end
   end
 
   describe 'participating_conversation_new_message' do
