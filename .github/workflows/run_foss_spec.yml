@@ -37,11 +37,7 @@ jobs:
       - name: Run bundle-audit
         run: |
           bundle exec bundle-audit update
-          # CVE-2026-67991 is a false positive for ruby_llm 1.x: the
-          # vulnerable Utils.underscore implementation was introduced during
-          # the 2.0 development cycle, while Chatwoot is constrained to 1.x.
-          # See https://github.com/crmne/ruby_llm/commit/9d75b033d7d00c4e1baa9b0afb4828faa8bd6602
-          bundle exec bundle-audit check --ignore CVE-2026-67991
+          bundle exec bundle-audit check
 
   lint-frontend:
     runs-on: ubuntu-latest
