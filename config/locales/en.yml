@@ -705,7 +705,7 @@ en:
       you: 'You'
       attachment: 'Attachment'
       view_attachment: 'View attachment'
-      mentioned: 'You have been mentioned in a conversation.'
+      mentioned: "You've been mentioned in a conversation."
       previous_messages: 'Previous messages:'
       view_message: 'View message'
       sla_missed_first_response: 'Conversation #%{conversation_id} in %{inbox_name} missed the first-response SLA under policy %{policy_name}.'
