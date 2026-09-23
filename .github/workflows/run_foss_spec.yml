@@ -41,7 +41,12 @@ jobs:
           # vulnerable Utils.underscore implementation was introduced during
           # the 2.0 development cycle, while Chatwoot is constrained to 1.x.
           # See https://github.com/crmne/ruby_llm/commit/9d75b033d7d00c4e1baa9b0afb4828faa8bd6602
-          bundle exec bundle-audit check --ignore CVE-2026-67991
+          # CVE-2026-32700 is mitigated by User's matching Confirmable override;
+          # CVE-2026-40295 requires Devise::Timeoutable, which Chatwoot does not use.
+          bundle exec bundle-audit check \
+            --ignore CVE-2026-67991 \
+            --ignore CVE-2026-32700 \
+            --ignore CVE-2026-40295
 
   lint-frontend:
     runs-on: ubuntu-latest
