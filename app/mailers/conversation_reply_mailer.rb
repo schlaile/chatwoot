@@ -131,12 +131,6 @@ class ConversationReplyMailer < ApplicationMailer
     end
   end
 
-  def notification_email_subject
-    subject = I18n.t('conversations.reply.email_subject')
-    prefix = GlobalConfig.get('MAILER_REPLY_SUBJECT_PREFIX')['MAILER_REPLY_SUBJECT_PREFIX'].presence
-    prefix.present? ? "[#{prefix}] #{subject}" : subject
-  end
-
   def reply_email
     if should_use_conversation_email_address?
       sender_name("reply+#{@conversation.uuid}@#{@account.inbound_email_domain}")
