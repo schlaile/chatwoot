@@ -73,4 +73,10 @@ RSpec.describe Email::SenderNameBuilder do
 
     expect(builder.build).to eq('Ivan von Juvigo <care@example.com>')
   end
+
+  it 'uses the configured reply sender name when present' do
+    allow(GlobalConfig).to receive(:get).with('MAILER_REPLY_SENDER_NAME').and_return({ 'MAILER_REPLY_SENDER_NAME' => 'musik Schlaile' })
+
+    expect(builder.build).to eq('Ivan | musik Schlaile <care@example.com>')
+  end
 end

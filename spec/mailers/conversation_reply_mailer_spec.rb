@@ -53,6 +53,19 @@ RSpec.describe ConversationReplyMailer do
         expect(mail.subject).to eq("[##{message.conversation.display_id}] New messages on this conversation")
       end
 
+      it 'adds the configured prefix to the default subject' do
+        allow(GlobalConfig).to receive(:get).with('MAILER_REPLY_SUBJECT_PREFIX').and_return({ 'MAILER_REPLY_SUBJECT_PREFIX' => 'musik Schlaile' })
+
+        expect(mail.subject).to eq("[##{message.conversation.display_id}] [musik Schlaile] New messages on this conversation")
+      end
+
+      it 'localizes the customer notification copy using the account locale' do
+        account.update!(locale: :de)
+
+        expect(mail.body.decoded).to include("Hallo #{message.conversation.contact.name},")
+        expect(mail.body.decoded).to include('Es gibt neue Nachrichten in Ihrer Unterhaltung.')
+      end
+
       it 'renders the subject in conversation as reply' do
         conversation.additional_attributes = { 'mail_subject': 'Mail Subject' }
         conversation.save!

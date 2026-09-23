@@ -121,7 +121,7 @@ class ConversationReplyMailer < ApplicationMailer
 
   def mail_subject
     subject = @conversation.additional_attributes['mail_subject']
-    return "[##{@conversation.display_id}] #{I18n.t('conversations.reply.email_subject')}" if subject.nil?
+    return "[##{@conversation.display_id}] #{notification_email_subject}" if subject.nil?
 
     chat_count = @conversation.messages.chat.count
     if chat_count > 1
@@ -129,6 +129,12 @@ class ConversationReplyMailer < ApplicationMailer
     else
       subject
     end
+  end
+
+  def notification_email_subject
+    subject = I18n.t('conversations.reply.email_subject')
+    prefix = GlobalConfig.get('MAILER_REPLY_SUBJECT_PREFIX')['MAILER_REPLY_SUBJECT_PREFIX'].presence
+    prefix.present? ? "[#{prefix}] #{subject}" : subject
   end
 
   def reply_email

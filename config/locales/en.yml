@@ -376,7 +376,22 @@ en:
           from_with_name: '%{assignee_name} from %{inbox_name} <%{from_email}>'
           reply_with_name: '%{assignee_name} from %{inbox_name} <reply+%{reply_email}>'
           friendly_name: '%{sender_name} from %{business_name} <%{from_email}>'
+          branded_friendly_name: '%{sender_name} | %{brand_name} <%{from_email}>'
           professional_name: '%{business_name} <%{from_email}>'
+        customer:
+          greeting: 'Hi %{name},'
+          new_messages: 'You have new messages on your conversation.'
+          you: 'You'
+          bot: 'Bot'
+          csat_prompt_before_link: 'Click'
+          csat_prompt_link: 'here'
+          csat_prompt_after_link: ' to rate the conversation.'
+          attachments: 'Attachments:'
+          from: 'From'
+          subject: 'Subject'
+          to: 'To'
+          cc: 'CC'
+          bcc: 'BCC'
       channel_email:
         header:
           reply_with_name: '%{assignee_name} from %{inbox_name} <%{from_email}>'

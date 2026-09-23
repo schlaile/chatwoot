@@ -107,6 +107,16 @@
   value:
   description: 'The support email address for your installation'
   locked: false
+- name: MAILER_REPLY_SENDER_NAME
+  display_title: 'Reply Sender Name'
+  value:
+  description: 'Optional brand name shown alongside the agent name in customer reply emails'
+  locked: false
+- name: MAILER_REPLY_SUBJECT_PREFIX
+  display_title: 'Reply Email Subject Prefix'
+  value:
+  description: 'Optional prefix shown in the subject of customer reply emails'
+  locked: false
 - name: ACCOUNT_EMAILS_LIMIT
   display_title: 'Account Email Sending Limit (Daily)'
   description: 'Maximum number of non-channel emails an account can send per day'

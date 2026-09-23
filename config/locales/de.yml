@@ -358,7 +358,22 @@ de:
           from_with_name: '%{assignee_name} von %{inbox_name} <%{from_email}>'
           reply_with_name: '%{assignee_name} von %{inbox_name} <reply+%{reply_email}>'
           friendly_name: '%{sender_name} von %{business_name} <%{from_email}>'
+          branded_friendly_name: '%{sender_name} | %{brand_name} <%{from_email}>'
           professional_name: '%{business_name} <%{from_email}>'
+        customer:
+          greeting: 'Hallo %{name},'
+          new_messages: 'Es gibt neue Nachrichten in Ihrer Unterhaltung.'
+          you: 'Sie'
+          bot: 'Bot'
+          csat_prompt_before_link: 'Klicken Sie'
+          csat_prompt_link: 'hier'
+          csat_prompt_after_link: ', um die Unterhaltung zu bewerten.'
+          attachments: 'Anhänge:'
+          from: 'Von'
+          subject: 'Betreff'
+          to: 'An'
+          cc: 'Kopie'
+          bcc: 'Blindkopie'
       channel_email:
         header:
           reply_with_name: '%{assignee_name} von %{inbox_name} <%{from_email}>'
