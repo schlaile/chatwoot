@@ -1,6 +1,7 @@
 class Captain::InboxPendingConversationsResolutionJob < ApplicationJob
   CAPTAIN_INFERENCE_RESOLVE_ACTIVITY_REASON = 'no outstanding questions'.freeze
-  CAPTAIN_INFERENCE_HANDOFF_ACTIVITY_REASON = 'pending clarification from customer'.freeze
+  CAPTAIN_INFERENCE_WAITING_ACTIVITY_REASON = 'no reply from customer'.freeze
+  CAPTAIN_INFERENCE_HANDOFF_ACTIVITY_REASON = 'needs a human agent'.freeze
   queue_as :low
 
   def perform(inbox)
@@ -41,8 +42,12 @@ class Captain::InboxPendingConversationsResolutionJob < ApplicationJob
       evaluation = evaluate_conversation(conversation, inbox)
       next unless still_resolvable_after_evaluation?(conversation)
 
-      if evaluation[:complete]
-        resolve_conversation(conversation, inbox, evaluation[:reason])
+      case evaluation[:outcome]
+      when 'complete'
+        resolve_conversation(conversation, CAPTAIN_INFERENCE_RESOLVE_ACTIVITY_REASON, "Auto-resolved: #{evaluation[:reason]}")
+      when 'waiting_on_customer'
+        resolve_conversation(conversation, CAPTAIN_INFERENCE_WAITING_ACTIVITY_REASON, "Auto-resolved, waiting on customer: #{evaluation[:reason]}",
+                             waiting_on_customer: true)
       else
         handoff_conversation(conversation, evaluation[:reason])
       end
@@ -71,13 +76,13 @@ class Captain::InboxPendingConversationsResolutionJob < ApplicationJob
     false
   end
 
-  def resolve_time_based_conversation(conversation, inbox)
+  def resolve_time_based_conversation(conversation, _inbox)
     resolved = false
     conversation.with_lock do
       conversation.reload
       next unless conversation.pending? && inactive_for_initial_action?(conversation)
 
-      create_resolution_message(conversation, inbox)
+      create_resolution_message(conversation)
       conversation.resolved!
       resolved = true
     end
@@ -93,12 +98,13 @@ class Captain::InboxPendingConversationsResolutionJob < ApplicationJob
     nil
   end
 
-  def resolve_conversation(conversation, inbox, reason)
-    resolved = with_inference_activity_context(conversation, CAPTAIN_INFERENCE_RESOLVE_ACTIVITY_REASON) do
+  def resolve_conversation(conversation, activity_reason, note, waiting_on_customer: false)
+    resolved = with_inference_activity_context(conversation, activity_reason) do
       perform_locked_transition(conversation) do
+        conversation.mark_captain_waiting_close if waiting_on_customer
         conversation.resolved!
-        create_private_note(conversation, "Auto-resolved: #{reason}")
-        create_resolution_message(conversation, inbox)
+        create_private_note(conversation, note)
+        create_resolution_message(conversation)
       end
     end
     record_inference_resolution(conversation) if resolved
@@ -167,19 +173,11 @@ class Captain::InboxPendingConversationsResolutionJob < ApplicationJob
     )
   end
 
-  def create_resolution_message(conversation, inbox)
-    return unless captain_assistant.send_inactivity_resolution_message?
-
-    I18n.with_locale(inbox.account.locale) do
-      resolution_message = captain_assistant.config['resolution_message']
-      conversation.messages.create!(
-        message_type: :outgoing,
-        account_id: conversation.account_id,
-        inbox_id: conversation.inbox_id,
-        content: resolution_message.presence || I18n.t('conversations.activity.auto_resolution_message'),
-        sender: captain_assistant
-      )
-    end
+  def create_resolution_message(conversation)
+    Captain::Conversation::ResolutionMessageService.new(
+      conversation: conversation,
+      assistant: captain_assistant
+    ).perform(use_default_message: true)
   end
 
   def create_handoff_message(conversation)

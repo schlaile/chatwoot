@@ -28,7 +28,7 @@
     "IN_A_DAY": "Wir antworten üblicherweise innerhalb eines Tages",
     "BACK_IN_HOURS": "Wir sind in {n} Stunde wieder online | Wir sind in {n} Stunden wieder online",
     "BACK_IN_MINUTES": "Wir sind in {time} Minuten wieder online",
-    "BACK_AT_TIME": "Wir sind um {time} wieder online",
+    "BACK_AT_TIME": "Wir sind ab {time} wieder online",
     "BACK_ON_DAY": "Wir sind am {day} wieder online",
     "BACK_TOMORROW": "Wir sind morgen wieder online",
     "BACK_IN_SOME_TIME": "Wir sind bald wieder online"
@@ -59,6 +59,9 @@
   },
   "POWERED_BY": "Unterstützt von Chatwoot",
   "EMAIL_PLACEHOLDER": "Bitte geben Sie Ihre E-Mail-Adresse ein",
+  "TRANSLATING": "Translating",
+  "VIEW_ORIGINAL": "View original",
+  "VIEW_TRANSLATION": "View translation",
   "CHAT_PLACEHOLDER": "Schreiben Sie Ihre Nachricht",
   "TODAY": "Heute",
   "YESTERDAY": "Gestern",

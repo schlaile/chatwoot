@@ -23,12 +23,15 @@ import PreChatFormSettings from './PreChatForm/Settings.vue';
 import WeeklyAvailability from './components/WeeklyAvailability.vue';
 import GreetingsEditor from 'shared/components/GreetingsEditor.vue';
 import ConfigurationPage from './settingsPage/ConfigurationPage.vue';
+import BandwidthConfiguration from './settingsPage/BandwidthConfiguration.vue';
+import InboxReconnectionRequired from './components/InboxReconnectionRequired.vue';
 import VoiceConfigurationPage from './settingsPage/VoiceConfigurationPage.vue';
 import WhatsappCallingPage from './settingsPage/WhatsappCallingPage.vue';
 import CustomerSatisfactionPage from './settingsPage/CustomerSatisfactionPage.vue';
 import CollaboratorsPage from './settingsPage/CollaboratorsPage.vue';
 import BotConfiguration from './components/BotConfiguration.vue';
 import AccountHealth from './components/AccountHealth.vue';
+import TwilioHealth from './components/TwilioHealth.vue';
 import WhatsappManualMigrationDialog from './components/WhatsappManualMigrationDialog.vue';
 import WhatsappManualMigrationBanner from './components/WhatsappManualMigrationBanner.vue';
 import { FEATURE_FLAGS } from '../../../../featureFlags';
@@ -36,8 +39,12 @@ import SenderNameExamplePreview from './components/SenderNameExamplePreview.vue'
 import LockToSingleConversationPreview from './components/LockToSingleConversationPreview.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import SpinnerLoader from 'dashboard/components-next/spinner/Spinner.vue';
-import { INBOX_TYPES } from 'dashboard/helper/inbox';
-import { getInboxIconByType } from 'dashboard/helper/inbox';
+import ChannelName from './components/ChannelName.vue';
+import {
+  getInboxIconByType,
+  getInboxIdentifier,
+  INBOX_TYPES,
+} from 'dashboard/helper/inbox';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { LocalStorage } from 'shared/helpers/localStorage';
 import Editor from 'dashboard/components-next/Editor/Editor.vue';
@@ -52,8 +59,11 @@ export default {
   components: {
     Banner,
     BotConfiguration,
+    ChannelName,
     CollaboratorsPage,
     ConfigurationPage,
+    BandwidthConfiguration,
+    InboxReconnectionRequired,
     VoiceConfigurationPage,
     WhatsappCallingPage,
     CustomerSatisfactionPage,
@@ -80,6 +90,7 @@ export default {
     ColorPicker,
     SelectInput,
     AccountHealth,
+    TwilioHealth,
     WhatsappManualMigrationDialog,
     WhatsappManualMigrationBanner,
     Widget,
@@ -157,8 +168,18 @@ export default {
     selectedTabKey() {
       return this.tabs[this.selectedTabIndex]?.key;
     },
+    // AccountHealth renders the structured provider error; TwilioHealth only needs the message.
+    healthErrorMessage() {
+      return this.healthError?.message || '';
+    },
     shouldShowWhatsAppConfiguration() {
       return this.isAWhatsAppCloudChannel;
+    },
+    isBandwidthInbox() {
+      return this.inbox.channel_type === INBOX_TYPES.SMS;
+    },
+    shouldShowTwilioHealth() {
+      return this.isATwilioChannel;
     },
     whatsAppAPIProviderName() {
       if (this.isAWhatsAppCloudChannel) {
@@ -206,8 +227,11 @@ export default {
         ];
       }
 
+      // A Twilio SMS or voice inbox's webhooks are checked on its Health tab; Twilio WhatsApp
+      // keeps this tab for template sync
       if (
-        this.isATwilioChannel ||
+        this.isATwilioWhatsAppChannel ||
+        this.isBandwidthInbox ||
         this.isALineChannel ||
         this.isAPIInbox ||
         (this.isAnEmailChannel && !this.inbox.provider) ||
@@ -244,6 +268,16 @@ export default {
         ];
       }
 
+      if (this.shouldShowTwilioHealth) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'twilio-health',
+            name: this.$t('INBOX_MGMT.TABS.ACCOUNT_HEALTH'),
+          },
+        ];
+      }
+
       if (
         this.isATwilioChannel &&
         this.inbox.phone_number &&
@@ -257,7 +291,7 @@ export default {
           ...visibleToAllChannelTabs,
           {
             key: 'voice-configuration',
-            name: this.$t('INBOX_MGMT.TABS.VOICE'),
+            name: this.$t('INBOX_MGMT.TABS.CALLS'),
           },
         ];
       }
@@ -304,18 +338,10 @@ export default {
       return 'max-w-7xl';
     },
     inboxName() {
-      if (this.isATwilioSMSChannel || this.isATwilioWhatsAppChannel) {
-        return `${this.inbox.name} (${
-          this.inbox.messaging_service_sid || this.inbox.phone_number
-        })`;
-      }
-      if (this.isAWhatsAppChannel) {
-        return `${this.inbox.name} (${this.inbox.phone_number})`;
-      }
-      if (this.isAnEmailChannel) {
-        return `${this.inbox.name} (${this.inbox.email})`;
-      }
       return this.inbox.name;
+    },
+    inboxIdentifier() {
+      return getInboxIdentifier(this.inbox);
     },
     canLocktoSingleConversation() {
       return (
@@ -395,11 +421,6 @@ export default {
       return (
         this.isAWhatsAppCloudChannel &&
         this.isEmbeddedSignupWhatsApp &&
-        (!this.isOnChatwootCloud ||
-          this.isFeatureEnabledonAccount(
-            this.accountId,
-            FEATURE_FLAGS.WHATSAPP_EMBEDDED_SIGNUP_FLOW
-          )) &&
         this.inbox.reauthorization_required
       );
     },
@@ -492,6 +513,7 @@ export default {
               phone_number_id: form.phoneNumberId,
               business_account_id: form.wabaId,
               api_key: form.accessToken,
+              app_secret: form.appSecret,
             },
           },
         };
@@ -582,7 +604,7 @@ export default {
     async fetchHealthData() {
       if (!this.inbox) return;
 
-      if (!this.isAWhatsAppCloudChannel) {
+      if (!this.isAWhatsAppCloudChannel && !this.shouldShowTwilioHealth) {
         return;
       }
 
@@ -621,6 +643,7 @@ export default {
         useAlert(this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_SUCCESS'));
         await this.fetchHealthData();
       } catch (error) {
+        // Same as the health fetch: the provider's own message is the actionable part.
         useAlert(
           error.response?.data?.error ||
             error.message ||
@@ -776,6 +799,36 @@ export default {
       :header-image="inbox.avatarUrl"
       :header-title="inboxName"
     >
+      <template #meta>
+        <ChannelName
+          :channel-type="inbox.channel_type"
+          :medium="inbox.medium"
+          :voice-enabled="inbox.voice_enabled"
+          class="shrink-0"
+        />
+        <template v-if="inboxIdentifier">
+          <span aria-hidden="true">·</span>
+          <bdi dir="auto" :title="inboxIdentifier" class="truncate">
+            {{ inboxIdentifier }}
+          </bdi>
+        </template>
+      </template>
+      <template #actions>
+        <router-link
+          :to="{
+            name: 'inbox_dashboard',
+            params: { inbox_id: currentInboxId },
+          }"
+          class="shrink-0"
+        >
+          <NextButton
+            :label="$t('INBOX_MGMT.VIEW_CONVERSATIONS')"
+            icon="i-woot-messages"
+            slate
+            sm
+          />
+        </router-link>
+      </template>
       <woot-tabs
         class="[&_ul]:p-0 top-px relative"
         :index="selectedTabIndex"
@@ -794,6 +847,18 @@ export default {
     </SettingIntroBanner>
     <section class="w-full overflow-auto py-8">
       <div class="max-w-7xl mx-auto w-full">
+        <InboxReconnectionRequired
+          v-if="isBandwidthInbox && !inbox.bandwidth_oauth_enabled"
+          :description="
+            $t('INBOX_MGMT.ADD.SMS.BANDWIDTH.OAUTH.LEGACY_DESCRIPTION')
+          "
+          :action-label="$t('INBOX_MGMT.ADD.SMS.BANDWIDTH.OAUTH.MIGRATE')"
+          class="mx-6 mb-4"
+          :class="bannerMaxWidth"
+          @reauthorize="
+            onTabChange(tabs.findIndex(tab => tab.key === 'configuration'))
+          "
+        />
         <MicrosoftReauthorize
           v-if="microsoftUnauthorized"
           :inbox="inbox"
@@ -1401,19 +1466,34 @@ export default {
           class="mx-6"
           :class="isAWebWidgetInbox ? 'max-w-7xl' : 'max-w-4xl'"
         >
-          <ConfigurationPage :inbox="inbox" />
+          <BandwidthConfiguration
+            v-if="isBandwidthInbox"
+            :key="inbox.id"
+            :inbox="inbox"
+          />
+          <ConfigurationPage v-else :inbox="inbox" />
         </div>
         <div
           v-if="selectedTabKey === 'voice-configuration'"
           class="mx-6 max-w-4xl"
         >
-          <VoiceConfigurationPage :inbox="inbox" />
+          <VoiceConfigurationPage
+            :inbox="inbox"
+            @open-business-hours="
+              onTabChange(tabs.findIndex(tab => tab.key === 'business-hours'))
+            "
+          />
         </div>
         <div
           v-if="selectedTabKey === 'calls-configuration'"
           class="mx-6 max-w-4xl"
         >
-          <WhatsappCallingPage :inbox="inbox" />
+          <WhatsappCallingPage
+            :inbox="inbox"
+            @open-business-hours="
+              onTabChange(tabs.findIndex(tab => tab.key === 'business-hours'))
+            "
+          />
         </div>
         <div v-if="selectedTabKey === 'csat'">
           <CustomerSatisfactionPage :inbox="inbox" />
@@ -1435,6 +1515,15 @@ export default {
             :is-registering-webhook="isRegisteringWebhook"
             @register-webhook="registerWebhook"
             @go-to-configuration="goToWhatsAppConfiguration"
+          />
+        </div>
+        <div v-if="selectedTabKey === 'twilio-health'">
+          <TwilioHealth
+            :health-data="healthData"
+            :is-loading="isLoadingHealth"
+            :error="healthErrorMessage"
+            :is-registering-webhook="isRegisteringWebhook"
+            @register-webhook="registerWebhook"
           />
         </div>
         <WhatsappManualMigrationDialog

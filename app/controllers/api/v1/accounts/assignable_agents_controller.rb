@@ -2,8 +2,8 @@ class Api::V1::Accounts::AssignableAgentsController < Api::V1::Accounts::BaseCon
   before_action :fetch_inboxes
 
   def index
-    # TODO: Remove this opt-in once mobile clients support AgentBot assignees in this payload.
-    @include_agent_bots = params[:include_agent_bots].present?
+    # TODO: Remove this opt-in once mobile clients support AI assignees in this payload.
+    @include_ai_assignees = params[:include_ai_assignees].present?
     agent_ids = @inboxes.map do |inbox|
       authorize inbox, :show?
       inbox.assignment_agents.map(&:id)
@@ -11,7 +11,7 @@ class Api::V1::Accounts::AssignableAgentsController < Api::V1::Accounts::BaseCon
     agent_ids = agent_ids.inject(:&)
     agents = Current.account.users.where(id: agent_ids)
     @assignable_agents = (agents + Current.account.administrators).uniq
-    @agent_bots = @include_agent_bots ? AgentBot.accessible_to(Current.account) : []
+    @agent_bots = @include_ai_assignees ? AgentBot.accessible_to(Current.account) : []
   end
 
   private
@@ -24,3 +24,5 @@ class Api::V1::Accounts::AssignableAgentsController < Api::V1::Accounts::BaseCon
     params.permit(inbox_ids: [])
   end
 end
+
+Api::V1::Accounts::AssignableAgentsController.prepend_mod_with('Api::V1::Accounts::AssignableAgentsController')
