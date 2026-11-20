@@ -24,6 +24,10 @@
     "FORGOT_PASSWORD": "Forgot your password?",
     "CREATE_NEW_ACCOUNT": "Create a new account",
     "SUBMIT": "Login",
+    "OIDC": {
+      "LABEL": "Login with single sign-on",
+      "ERROR_MESSAGE": "Single sign-on failed. Please try again or log in with your password."
+    },
     "SAML": {
       "LABEL": "Login via SSO",
       "TITLE": "Initiate Single Sign-on (SSO)",

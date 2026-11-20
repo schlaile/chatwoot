@@ -16,6 +16,7 @@ import { getLoginRedirectURL, getSignupRoute } from 'v3/helpers/AuthHelper';
 import SimpleDivider from '../../components/Divider/SimpleDivider.vue';
 import FormInput from '../../components/Form/Input.vue';
 import GoogleOAuthButton from '../../components/GoogleOauth/Button.vue';
+import OidcLoginButton from '../../components/OidcLogin/Button.vue';
 import Spinner from 'shared/components/Spinner.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -29,6 +30,7 @@ const ERROR_MESSAGES = {
   'shopify-installation-failed': 'LOGIN.OAUTH.SHOPIFY_INSTALLATION_FAILED',
   'saml-authentication-failed': 'LOGIN.SAML.API.ERROR_MESSAGE',
   'saml-not-enabled': 'LOGIN.SAML.API.ERROR_MESSAGE',
+  'sso-authentication-failed': 'LOGIN.OIDC.ERROR_MESSAGE',
 };
 
 const IMPERSONATION_URL_SEARCH_KEY = 'impersonation';
@@ -39,6 +41,7 @@ export default {
   components: {
     FormInput,
     GoogleOAuthButton,
+    OidcLoginButton,
     Spinner,
     NextButton,
     SimpleDivider,
@@ -136,6 +139,9 @@ export default {
     },
     showSamlLogin() {
       return this.allowedLoginMethods.includes('saml');
+    },
+    showOidcLogin() {
+      return this.allowedLoginMethods.includes('oidc');
     },
     samlLoginRoute() {
       const route = { name: 'sso_login' };
@@ -460,12 +466,13 @@ export default {
       v-else
       class="bg-white shadow sm:mx-auto mt-11 sm:w-full sm:max-w-lg dark:bg-n-solid-2 p-11 sm:shadow-lg sm:rounded-lg"
       :class="{
-        'mb-8 mt-15': !showGoogleOAuth,
+        'mb-8 mt-15': !showGoogleOAuth && !showOidcLogin,
         'animate-wiggle': loginApi.hasErrored,
       }"
     >
       <div v-if="!email">
         <div class="flex flex-col gap-4">
+          <OidcLoginButton v-if="showOidcLogin" />
           <GoogleOAuthButton
             v-if="showGoogleOAuth"
             :redirect-url="redirectUrl"
@@ -486,7 +493,7 @@ export default {
             </router-link>
           </div>
           <SimpleDivider
-            v-if="showGoogleOAuth || showSamlLogin"
+            v-if="showGoogleOAuth || showSamlLogin || showOidcLogin"
             :label="$t('COMMON.OR')"
             class="uppercase"
           />
