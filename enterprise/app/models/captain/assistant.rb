@@ -29,6 +29,7 @@ class Captain::Assistant < ApplicationRecord
   include Avatarable
   include Concerns::CaptainToolsHelpers
   include Concerns::Agentable
+  include Concerns::AssistantToolCatalog
 
   self.table_name = 'captain_assistants'
 
@@ -44,9 +45,14 @@ class Captain::Assistant < ApplicationRecord
            through: :captain_inboxes
   has_many :messages, as: :sender, dependent: :nullify
   has_many :copilot_threads, dependent: :destroy_async
+  has_many :custom_tools, class_name: 'Captain::CustomTool', dependent: :destroy_async
+  has_many :mcp_servers, class_name: 'Captain::McpServer', dependent: :destroy_async
+  has_many :mcp_tools, through: :mcp_servers, source: :tools
   has_many :scenarios, class_name: 'Captain::Scenario', dependent: :destroy_async
   has_many :agent_sessions, class_name: 'Captain::AgentSession', dependent: :destroy_async
   has_many :conversation_outcomes, dependent: :destroy_async
+  has_many :assigned_conversations, as: :ai_assignee, class_name: '::Conversation', foreign_key: :assignee_agent_bot_id,
+                                    dependent: :nullify, inverse_of: :ai_assignee
 
   store_accessor :config, :temperature, :feature_faq, :feature_memory, :feature_contact_attributes, :product_name,
                  :auto_resolve_mode, :auto_resolve_after, :send_inactivity_resolution_message, :response_window
@@ -110,14 +116,10 @@ class Captain::Assistant < ApplicationRecord
   end
 
   def inactivity_threshold_minutes
-    return DEFAULT_INACTIVITY_THRESHOLD_MINUTES unless account.feature_enabled?('captain_integration_v2')
-
     (config['auto_resolve_after'] || DEFAULT_INACTIVITY_THRESHOLD_MINUTES).to_i
   end
 
   def send_inactivity_resolution_message
-    return true unless account.feature_enabled?('captain_integration_v2')
-
     config.fetch('send_inactivity_resolution_message', true)
   end
 
@@ -125,39 +127,12 @@ class Captain::Assistant < ApplicationRecord
     send_inactivity_resolution_message
   end
 
-  def available_agent_tools
-    tools = self.class.built_in_agent_tools.dup
-
-    custom_tools = account.captain_custom_tools.enabled.map(&:to_tool_metadata)
-    tools.concat(custom_tools)
-
-    tools
-  end
-
-  def available_tool_ids
-    available_agent_tools.pluck(:id)
-  end
-
   def push_event_data
-    {
-      id: id,
-      name: name,
-      avatar_url: avatar_url.presence || default_avatar_url,
-      description: description,
-      created_at: created_at,
-      type: 'captain_assistant'
-    }
+    assistant_event_data
   end
 
   def webhook_data
-    {
-      id: id,
-      name: name,
-      avatar_url: avatar_url.presence || default_avatar_url,
-      description: description,
-      created_at: created_at,
-      type: 'captain_assistant'
-    }
+    assistant_event_data
   end
 
   def customer_visible_citation_urls(citation_document_ids)
@@ -180,6 +155,17 @@ class Captain::Assistant < ApplicationRecord
   end
 
   private
+
+  def assistant_event_data
+    {
+      id: id,
+      name: name,
+      avatar_url: avatar_url.presence || default_avatar_url,
+      description: description,
+      created_at: created_at,
+      type: 'captain_assistant'
+    }
+  end
 
   def normalize_auto_resolve_after
     threshold = Integer(auto_resolve_after.to_s, exception: false)
@@ -210,7 +196,8 @@ class Captain::Assistant < ApplicationRecord
     [
       self.class.resolve_tool_class('faq_lookup').new(self),
       self.class.resolve_tool_class('handoff').new(self),
-      *account.captain_custom_tools.enabled.map { |custom_tool| custom_tool.tool(self) }
+      *custom_tools.enabled.map { |custom_tool| custom_tool.tool(self) },
+      *mcp_agent_tools.tools
     ]
   end
 
