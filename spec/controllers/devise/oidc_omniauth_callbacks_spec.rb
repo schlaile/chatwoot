@@ -5,7 +5,8 @@ require 'rails_helper'
 # the OmniAuth middleware would.
 RSpec.describe 'DeviseOverrides::OmniauthCallbacksController OIDC login', type: :request do
   def oidc_auth(email)
-    OmniAuth::AuthHash.new(provider: 'openid_connect', uid: 'authentik-sub-1', info: { name: 'Test', email: email })
+    OmniAuth::AuthHash.new(provider: 'openid_connect', uid: 'authentik-sub-1', info: { name: 'Test', email: email },
+                           credentials: { id_token: 'the-id-token' })
   end
 
   def oidc_callback(email)
@@ -24,6 +25,7 @@ RSpec.describe 'DeviseOverrides::OmniauthCallbacksController OIDC login', type: 
     expect(response).to redirect_to(%r{\Ahttp://www.example.com/app/login\?email=agent%2540example.com&sso_auth_token=.+\z})
     token = Rack::Utils.parse_query(URI(response.location).query)['sso_auth_token']
     expect(user.reload.valid_sso_auth_token?(token)).to be(true)
+    expect(Redis::Alfred.get("OIDC_ID_TOKEN::PENDING::#{user.id}")).to eq('the-id-token')
   end
 
   it 'never creates users or accounts' do
@@ -31,13 +33,13 @@ RSpec.describe 'DeviseOverrides::OmniauthCallbacksController OIDC login', type: 
       expect { oidc_callback('stranger@example.com') }.not_to change(User, :count)
     end
 
-    expect(response).to redirect_to('http://www.example.com/app/login?error=no-account-found')
+    expect(response).to redirect_to('http://www.example.com/app/login?error=sso-no-agent')
   end
 
   it 'rejects an auth hash without email' do
     oidc_callback(nil)
 
-    expect(response).to redirect_to('http://www.example.com/app/login?error=no-account-found')
+    expect(response).to redirect_to('http://www.example.com/app/login?error=sso-no-agent')
   end
 
   it 'sends provider failures back to the login page' do

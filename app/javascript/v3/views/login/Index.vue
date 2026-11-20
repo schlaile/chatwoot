@@ -31,6 +31,7 @@ const ERROR_MESSAGES = {
   'saml-authentication-failed': 'LOGIN.SAML.API.ERROR_MESSAGE',
   'saml-not-enabled': 'LOGIN.SAML.API.ERROR_MESSAGE',
   'sso-authentication-failed': 'LOGIN.OIDC.ERROR_MESSAGE',
+  'sso-no-agent': 'LOGIN.OIDC.NO_AGENT',
 };
 
 const IMPERSONATION_URL_SEARCH_KEY = 'impersonation';

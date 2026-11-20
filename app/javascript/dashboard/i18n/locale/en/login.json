@@ -26,7 +26,8 @@
     "SUBMIT": "Login",
     "OIDC": {
       "LABEL": "Login with single sign-on",
-      "ERROR_MESSAGE": "Single sign-on failed. Please try again or log in with your password."
+      "ERROR_MESSAGE": "Single sign-on failed. Please try again or log in with your password.",
+      "NO_AGENT": "Single sign-on worked, but there is no Chatwoot agent with your email address yet. An administrator needs to add you as an agent in Chatwoot."
     },
     "SAML": {
       "LABEL": "Login via SSO",

@@ -19,7 +19,7 @@ export default {
         .delete(urlData.url)
         .then(response => {
           deleteIndexedDBOnLogout();
-          clearCookiesOnLogout();
+          clearCookiesOnLogout(response?.data?.oidc_logout_url);
           resolve(response);
         })
         .catch(error => {

@@ -40,8 +40,9 @@ class DeviseOverrides::OmniauthCallbacksController < DeviseTokenAuth::OmniauthCa
   def oidc_sign_in
     email = auth_hash&.dig('info', 'email')
     @resource = email.present? ? resource_class.from_email(email) : nil
-    return redirect_to login_page_url(error: 'no-account-found') if @resource.blank?
+    return redirect_to login_page_url(error: 'sso-no-agent') if @resource.blank?
 
+    Oidc::LogoutService.remember_pending(@resource, auth_hash.dig('credentials', 'id_token'))
     sign_in_user
   end
 
