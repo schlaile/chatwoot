@@ -76,7 +76,7 @@ export const deleteIndexedDBOnLogout = async () => {
   localStorage.removeItem('cw-idb-names');
 };
 
-export const clearCookiesOnLogout = () => {
+export const clearCookiesOnLogout = (redirectUrl = null) => {
   emitter.emit(CHATWOOT_RESET);
   emitter.emit(ANALYTICS_RESET);
   clearBrowserSessionCookies();
@@ -84,7 +84,8 @@ export const clearCookiesOnLogout = () => {
   clearSessionStorageOnLogout();
   const globalConfig = window.globalConfig || {};
   const logoutRedirectLink = globalConfig.LOGOUT_REDIRECT_LINK || '/';
-  window.location = logoutRedirectLink;
+  // An OIDC session also ends at the provider, which then sends the browser back to the login page.
+  window.location = redirectUrl || logoutRedirectLink;
 };
 
 export const parseAPIErrorResponse = error => {

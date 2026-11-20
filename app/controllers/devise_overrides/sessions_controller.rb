@@ -16,6 +16,12 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     redirect_to login_page_url(error: 'access-denied')
   end
 
+  def destroy
+    # Read before DeviseTokenAuth drops the token; nil unless the session came from OIDC.
+    @oidc_logout_url = Oidc::LogoutService.logout_url(@resource, @token&.client) if @resource
+    super
+  end
+
   def create
     return handle_mfa_setup_verification if mfa_setup_verification_request?
     return handle_mfa_verification if mfa_verification_request?
@@ -33,6 +39,10 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     else
       render partial: 'devise/auth', formats: [:json], locals: { resource: @resource }
     end
+  end
+
+  def render_destroy_success
+    render json: { success: true, oidc_logout_url: @oidc_logout_url }.compact, status: :ok
   end
 
   private
@@ -70,6 +80,7 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     return render_create_error_bad_credentials if @impersonation && !@resource.consume_sso_auth_token(params[:sso_auth_token])
 
     authenticate_resource_with_sso_token
+    Oidc::LogoutService.attach_to_client(@resource, @token.client) unless @impersonation
     log_impersonation_started if @impersonation
     yield @resource if block_given?
     render_create_success
