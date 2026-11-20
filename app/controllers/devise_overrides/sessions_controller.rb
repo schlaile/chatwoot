@@ -16,12 +16,6 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     redirect_to login_page_url(error: 'access-denied')
   end
 
-  def destroy
-    # Read before DeviseTokenAuth drops the token; nil unless the session came from OIDC.
-    @oidc_logout_url = Oidc::LogoutService.logout_url(@resource, @token&.client) if @resource
-    super
-  end
-
   def create
     return handle_mfa_setup_verification if mfa_setup_verification_request?
     return handle_mfa_verification if mfa_verification_request?
@@ -29,6 +23,12 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     return if password_pre_auth_intercepted?
 
     # Only proceed with standard authentication if no MFA is required
+    super
+  end
+
+  def destroy
+    # Read before DeviseTokenAuth drops the token; nil unless the session came from OIDC.
+    @oidc_logout_url = Oidc::LogoutService.logout_url(@resource, @token&.client) if @resource
     super
   end
 
@@ -80,7 +80,6 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     return render_create_error_bad_credentials if @impersonation && !@resource.consume_sso_auth_token(params[:sso_auth_token])
 
     authenticate_resource_with_sso_token
-    Oidc::LogoutService.attach_to_client(@resource, @token.client) unless @impersonation
     log_impersonation_started if @impersonation
     yield @resource if block_given?
     render_create_success
@@ -103,6 +102,8 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     sign_in(:user, @resource, store: false, bypass: false)
     # invalidate the token after the user is signed in
     @resource.invalidate_sso_auth_token(params[:sso_auth_token])
+    # an OIDC login keeps its ID token for logging out of the provider later
+    Oidc::LogoutService.attach_to_client(@resource, @token.client) unless @impersonation
   end
 
   def make_room_for_impersonation_token
