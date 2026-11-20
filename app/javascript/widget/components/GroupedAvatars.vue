@@ -1,46 +1,36 @@
+<script setup>
+import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import { computed } from 'vue';
+
+const props = defineProps({
+  users: {
+    type: Array,
+    default: () => [],
+  },
+  limit: {
+    type: Number,
+    default: 4,
+  },
+});
+
+const usersToDisplay = computed(() => props.users.slice(0, props.limit));
+</script>
+
 <template>
-  <div class="avatars">
-    <span v-for="user in users" :key="user.id" class="avatar">
-      <Thumbnail
-        size="24px"
-        :username="user.name"
-        :src="user.avatar"
-        has-border
+  <div class="flex">
+    <span
+      v-for="(user, index) in usersToDisplay"
+      :key="user.id"
+      :class="index ? 'ltr:-ml-4 rtl:-mr-4' : ''"
+      class="inline-block rounded-full text-white shadow-solid"
+    >
+      <Avatar
+        :name="user.name"
+        :src="user.avatar_url"
+        :size="36"
+        class="[&>span]:outline [&>span]:outline-1 [&>span]:outline-n-background"
+        rounded-full
       />
     </span>
   </div>
 </template>
-
-<script>
-import Thumbnail from 'dashboard/components/widgets/Thumbnail.vue';
-
-export default {
-  name: 'GroupedAvatars',
-  components: { Thumbnail },
-  props: {
-    users: {
-      type: Array,
-      default: () => [],
-    },
-  },
-};
-</script>
-
-<style scoped lang="scss">
-@import '~widget/assets/scss/variables.scss';
-@import '~widget/assets/scss/mixins.scss';
-
-.avatars {
-  display: inline-block;
-  padding-left: $space-one;
-
-  .avatar {
-    margin-left: -$space-slab;
-    position: relative;
-    display: inline-block;
-    overflow: hidden;
-    width: $space-medium;
-    height: $space-medium;
-  }
-}
-</style>

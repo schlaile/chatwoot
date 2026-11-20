@@ -2,26 +2,46 @@ import axios from 'axios';
 import { actions } from '../../conversationStats';
 import * as types from '../../../mutation-types';
 
-const commit = jest.fn();
+const commit = vi.fn();
 global.axios = axios;
-jest.mock('axios');
+vi.mock('axios');
+
+vi.mock('@chatwoot/utils', () => ({
+  debounce: vi.fn(fn => {
+    return fn;
+  }),
+}));
 
 describe('#actions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers(); // Set up fake timers
+    commit.mockClear();
+    actions.onListRequestStarted({}, { inboxId: 1, status: 'open' });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers(); // Reset to real timers after each test
+  });
+
   describe('#get', () => {
     it('sends correct mutations if API is success', async () => {
       axios.get.mockResolvedValue({ data: { meta: { mine_count: 1 } } });
-      await actions.get(
-        { commit },
+      actions.get(
+        { commit, state: { allCount: 0 } },
         { inboxId: 1, assigneeTpe: 'me', status: 'open' }
       );
+
+      await vi.runAllTimersAsync();
+      await vi.waitFor(() => expect(commit).toHaveBeenCalled());
+
       expect(commit.mock.calls).toEqual([
         [types.default.SET_CONV_TAB_META, { mine_count: 1 }],
       ]);
     });
     it('sends correct actions if API is error', async () => {
       axios.get.mockRejectedValue({ message: 'Incorrect header' });
-      await actions.get(
-        { commit },
+      actions.get(
+        { commit, state: { allCount: 0 } },
         { inboxId: 1, assigneeTpe: 'me', status: 'open' }
       );
       expect(commit.mock.calls).toEqual([]);
@@ -30,9 +50,13 @@ describe('#actions', () => {
 
   describe('#set', () => {
     it('sends correct mutations', async () => {
+      const request = actions.onListRequestStarted({}, { status: 'open' });
       actions.set(
         { commit },
-        { mine_count: 1, unassigned_count: 1, all_count: 2 }
+        {
+          meta: { mine_count: 1, unassigned_count: 1, all_count: 2 },
+          request,
+        }
       );
       expect(commit.mock.calls).toEqual([
         [

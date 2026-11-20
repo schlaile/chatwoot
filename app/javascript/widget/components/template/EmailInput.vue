@@ -1,37 +1,15 @@
-<template>
-  <div>
-    <form
-      v-if="!hasSubmitted"
-      class="email-input-group"
-      @submit.prevent="onSubmit()"
-    >
-      <input
-        v-model.trim="email"
-        class="form-input"
-        :placeholder="$t('EMAIL_PLACEHOLDER')"
-        :class="{ error: $v.email.$error }"
-        @input="$v.email.$touch"
-        @keyup.enter="onSubmit"
-      />
-      <button
-        class="button"
-        :disabled="$v.email.$invalid"
-        :style="{ background: widgetColor, borderColor: widgetColor }"
-      >
-        <i v-if="!uiFlags.isUpdating" class="ion-ios-arrow-forward" />
-        <spinner v-else />
-      </button>
-    </form>
-  </div>
-</template>
-
 <script>
 import { mapGetters } from 'vuex';
-import Spinner from 'shared/components/Spinner';
-import { required, email } from 'vuelidate/lib/validators';
+import { useVuelidate } from '@vuelidate/core';
+import { required, email } from '@vuelidate/validators';
+import { getContrastingTextColor } from '@chatwoot/utils';
+
+import FluentIcon from 'shared/components/FluentIcon/Index.vue';
+import Spinner from 'shared/components/Spinner.vue';
 
 export default {
   components: {
+    FluentIcon,
     Spinner,
   },
   props: {
@@ -44,16 +22,22 @@ export default {
       default: () => {},
     },
   },
+  setup() {
+    return { v$: useVuelidate() };
+  },
   data() {
     return {
       email: '',
+      isUpdating: false,
     };
   },
   computed: {
     ...mapGetters({
-      uiFlags: 'message/getUIFlags',
       widgetColor: 'appConfig/getWidgetColor',
     }),
+    textColor() {
+      return getContrastingTextColor(this.widgetColor);
+    },
     hasSubmitted() {
       return (
         this.messageContentAttributes &&
@@ -68,45 +52,77 @@ export default {
     },
   },
   methods: {
-    onSubmit() {
-      if (this.$v.$invalid) {
+    async onSubmit() {
+      if (this.v$.$invalid) {
         return;
       }
-
-      this.$store.dispatch('message/update', {
-        email: this.email,
-        messageId: this.messageId,
-      });
+      this.isUpdating = true;
+      try {
+        await this.$store.dispatch('message/update', {
+          email: this.email,
+          messageId: this.messageId,
+        });
+      } catch (error) {
+        // Ignore error
+      } finally {
+        this.isUpdating = false;
+      }
     },
   },
 };
 </script>
 
+<template>
+  <div>
+    <form
+      v-if="!hasSubmitted"
+      class="email-input-group h-10 flex my-2 mx-0 min-w-[200px]"
+      @submit.prevent="onSubmit"
+    >
+      <input
+        v-model="email"
+        type="email"
+        :placeholder="$t('EMAIL_PLACEHOLDER')"
+        :class="{ error: v$.email.$error }"
+        @input="v$.email.$touch"
+        @keydown.enter="onSubmit"
+      />
+      <button
+        class="button small"
+        :disabled="v$.email.$invalid"
+        :style="{
+          background: widgetColor,
+          borderColor: widgetColor,
+          color: textColor,
+        }"
+      >
+        <FluentIcon
+          v-if="!isUpdating"
+          icon="chevron-right"
+          class="rtl:rotate-180"
+        />
+        <Spinner v-else class="mx-2" />
+      </button>
+    </form>
+  </div>
+</template>
+
 <style lang="scss" scoped>
-@import '~widget/assets/scss/variables.scss';
-
 .email-input-group {
-  display: flex;
-  margin: $space-small 0;
-  min-width: 200px;
-
   input {
-    border-bottom-right-radius: 0;
-    border-top-right-radius: 0;
-    padding: $space-one;
-    width: auto;
+    @apply dark:bg-n-alpha-black1 rtl:rounded-tl-[0] ltr:rounded-tr-[0] rtl:rounded-bl-[0] ltr:rounded-br-[0] p-2.5 w-full focus:ring-0 focus:outline-n-brand;
+
+    &::placeholder {
+      @apply text-n-slate-10;
+    }
 
     &.error {
-      border-color: $color-error;
+      @apply outline-n-ruby-8 dark:outline-n-ruby-8 hover:outline-n-ruby-9 dark:hover:outline-n-ruby-9;
     }
   }
 
   .button {
-    border-bottom-left-radius: 0;
-    border-top-left-radius: 0;
-    font-size: $font-size-large;
-    height: auto;
-    margin-left: -1px;
+    @apply rtl:rounded-tr-[0] ltr:rounded-tl-[0] rtl:rounded-br-[0] ltr:rounded-bl-[0] rounded-lg h-auto ltr:-ml-px rtl:-mr-px text-xl;
 
     .spinner {
       display: block;

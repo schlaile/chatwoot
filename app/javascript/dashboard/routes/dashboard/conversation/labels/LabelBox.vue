@@ -1,162 +1,176 @@
+<script setup>
+import { ref } from 'vue';
+import { useMapGetter } from 'dashboard/composables/store';
+import { useAdmin } from 'dashboard/composables/useAdmin';
+import { useConversationLabels } from 'dashboard/composables/useConversationLabels';
+import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
+import Spinner from 'shared/components/Spinner.vue';
+import LabelDropdown from 'shared/components/ui/label/LabelDropdown.vue';
+import AddLabel from 'shared/components/ui/dropdown/AddLabel.vue';
+import Icon from 'dashboard/components-next/icon/Icon.vue';
+import SuggestionChip from 'dashboard/components-next/captain/classifier/SuggestionChip.vue';
+import SuggestionSkeleton from 'dashboard/components-next/captain/classifier/SuggestionSkeleton.vue';
+
+defineProps({
+  suggestedLabels: { type: Array, default: () => [] },
+  isSuggestionActive: { type: Boolean, default: false },
+  isSuggesting: { type: Boolean, default: false },
+});
+
+const emit = defineEmits([
+  'acceptSuggestion',
+  'rejectSuggestion',
+  'acceptAllSuggestions',
+]);
+
+const { isAdmin } = useAdmin();
+const {
+  savedLabels,
+  activeLabels,
+  accountLabels,
+  addLabelToConversation,
+  removeLabelFromConversation,
+} = useConversationLabels();
+
+const conversationUiFlags = useMapGetter('conversationLabels/getUIFlags');
+
+const showSearchDropdownLabel = ref(false);
+
+const toggleLabels = () => {
+  showSearchDropdownLabel.value = !showSearchDropdownLabel.value;
+};
+
+const closeDropdownLabel = () => {
+  showSearchDropdownLabel.value = false;
+};
+
+useKeyboardEvents({
+  KeyL: {
+    action: e => {
+      e.preventDefault();
+      toggleLabels();
+    },
+  },
+  Escape: {
+    action: () => {
+      if (showSearchDropdownLabel.value) {
+        toggleLabels();
+      }
+    },
+    allowOnFocusedInput: true,
+  },
+});
+</script>
+
 <template>
-  <div class="contact-conversation--panel sidebar-labels-wrap">
+  <div class="sidebar-labels-wrap">
     <div
       v-if="!conversationUiFlags.isFetching"
       class="contact-conversation--list"
     >
-      <contact-details-item
-        :title="$t('CONTACT_PANEL.LABELS.TITLE')"
-        icon="ion-pricetags"
-        :show-edit="true"
-        @edit="onEdit"
-      />
-      <woot-label
-        v-for="label in activeLabels"
-        :key="label.id"
-        :title="label.title"
-        :description="label.description"
-        :bg-color="label.color"
-      />
-      <div v-if="!activeLabels.length">
-        {{ $t('CONTACT_PANEL.LABELS.NO_AVAILABLE_LABELS') }}
+      <div
+        v-on-clickaway="closeDropdownLabel"
+        class="label-wrap flex flex-wrap"
+        @keyup.esc="closeDropdownLabel"
+      >
+        <AddLabel @add="toggleLabels" />
+        <TransitionGroup
+          enter-active-class="animate-pop-in"
+          leave-active-class="transition duration-150 ease-in absolute"
+          leave-to-class="opacity-0 scale-90"
+          move-class="transition-transform duration-200"
+        >
+          <woot-label
+            v-for="label in activeLabels"
+            :key="label.id"
+            :title="label.title"
+            :description="label.description"
+            show-close
+            :color="label.color"
+            variant="smooth"
+            class="max-w-[calc(100%-0.5rem)]"
+            @remove="removeLabelFromConversation"
+          />
+        </TransitionGroup>
+        <template v-if="isSuggestionActive">
+          <template v-if="isSuggesting">
+            <SuggestionSkeleton
+              class="flex-1 h-6 rounded basis-12 max-w-20 mb-0.5 me-1 animate-pop-in"
+            />
+            <SuggestionSkeleton
+              class="flex-1 h-6 rounded basis-12 max-w-28 mb-0.5 me-1 animate-pop-in [animation-delay:70ms]"
+            />
+          </template>
+          <span
+            v-else-if="!suggestedLabels.length"
+            class="inline-flex items-center h-6 min-w-0 gap-1 mb-0.5 ms-1 grow basis-24 max-w-max text-xs text-n-slate-11 animate-fade-in-up"
+          >
+            <Icon
+              icon="i-ph-sparkle-fill"
+              class="flex-shrink-0 size-3 text-n-iris-9"
+            />
+            <span class="truncate">
+              {{ $t('CONVERSATION.SUGGESTIONS.EMPTY') }}
+            </span>
+          </span>
+          <TransitionGroup
+            v-else
+            leave-active-class="transition duration-150 ease-in absolute"
+            leave-to-class="opacity-0 scale-90"
+            move-class="transition-transform duration-200"
+          >
+            <SuggestionChip
+              v-for="(label, index) in suggestedLabels"
+              :key="label.id"
+              :title="label.title"
+              :color="label.color"
+              :index="index"
+              @accept="emit('acceptSuggestion', label)"
+              @reject="emit('rejectSuggestion', label)"
+            />
+            <button
+              v-if="suggestedLabels.length > 1"
+              key="accept-all"
+              class="inline-flex items-center h-6 gap-1 px-2 mb-1 text-xs font-medium transition-all rounded text-n-iris-11 bg-n-iris-3 hover:bg-n-iris-4 hover:text-n-iris-12 active:scale-95 animate-pop-in [animation-delay:210ms]"
+              @click="emit('acceptAllSuggestions')"
+            >
+              <Icon icon="i-lucide-check-check" />
+              {{ $t('CONVERSATION.SUGGESTIONS.ACCEPT_ALL') }}
+            </button>
+          </TransitionGroup>
+        </template>
+        <div
+          :class="{
+            'block visible': showSearchDropdownLabel,
+            'hidden invisible': !showSearchDropdownLabel,
+          }"
+          class="border rounded-lg bg-n-alpha-3 top-6 backdrop-blur-[100px] absolute w-full shadow-lg border-n-strong dark:border-n-strong p-2 box-border z-[9999]"
+        >
+          <LabelDropdown
+            v-if="showSearchDropdownLabel"
+            :account-labels="accountLabels"
+            :selected-labels="savedLabels"
+            :allow-creation="isAdmin"
+            @add="addLabelToConversation"
+            @remove="removeLabelFromConversation"
+          />
+        </div>
       </div>
-      <add-label-to-conversation
-        v-if="isEditing"
-        :conversation-id="conversationId"
-        :account-labels="accountLabels"
-        :saved-labels="savedLabels"
-        :show.sync="isEditing"
-        :on-close="closeEditModal"
-        :update-labels="onUpdateLabels"
-      />
     </div>
-    <spinner v-else></spinner>
+    <Spinner v-else />
   </div>
 </template>
 
-<script>
-import { mapGetters } from 'vuex';
-import AddLabelToConversation from './AddLabelToConversation';
-import ContactDetailsItem from '../ContactDetailsItem';
-import Spinner from 'shared/components/Spinner';
-
-export default {
-  components: {
-    AddLabelToConversation,
-    ContactDetailsItem,
-    Spinner,
-  },
-  props: {
-    conversationId: {
-      type: [String, Number],
-      required: true,
-    },
-  },
-  data() {
-    return {
-      isEditing: false,
-      selectedLabels: [],
-    };
-  },
-  computed: {
-    savedLabels() {
-      return this.$store.getters['conversationLabels/getConversationLabels'](
-        this.conversationId
-      );
-    },
-    ...mapGetters({
-      conversationUiFlags: 'contactConversations/getUIFlags',
-      labelUiFlags: 'conversationLabels/getUIFlags',
-      accountLabels: 'labels/getLabels',
-    }),
-    activeLabels() {
-      return this.accountLabels.filter(({ title }) =>
-        this.savedLabels.includes(title)
-      );
-    },
-  },
-  watch: {
-    conversationId(newConversationId, prevConversationId) {
-      if (newConversationId && newConversationId !== prevConversationId) {
-        this.fetchLabels(newConversationId);
-      }
-    },
-  },
-  mounted() {
-    const { conversationId } = this;
-    this.fetchLabels(conversationId);
-  },
-  methods: {
-    async onUpdateLabels(selectedLabels) {
-      try {
-        await this.$store.dispatch('conversationLabels/update', {
-          conversationId: this.conversationId,
-          labels: selectedLabels,
-        });
-      } catch (error) {
-        // Ignore error
-      }
-    },
-    onEdit() {
-      this.isEditing = true;
-    },
-    closeEditModal() {
-      bus.$emit('fetch_conversation_stats');
-      this.isEditing = false;
-    },
-    async fetchLabels(conversationId) {
-      if (!conversationId) {
-        return;
-      }
-      this.$store.dispatch('conversationLabels/get', conversationId);
-    },
-  },
-};
-</script>
-
 <style lang="scss" scoped>
-@import '~dashboard/assets/scss/variables';
-@import '~dashboard/assets/scss/mixins';
-
-.contact-conversation--panel {
-  padding: $space-normal;
+.sidebar-labels-wrap {
+  margin-bottom: 0;
 }
+.contact-conversation--list {
+  width: 100%;
 
-.conversation--label {
-  color: $color-white;
-  margin-right: $space-small;
-  font-size: $font-size-small;
-  padding: $space-smaller;
-}
-
-.select-tags {
-  .multiselect {
-    &:hover {
-      cursor: pointer;
-    }
-    transition: $transition-ease-in;
-    margin-bottom: 0;
+  .label-wrap {
+    line-height: 1.5rem;
+    position: relative;
   }
-}
-
-.button {
-  margin-top: $space-small;
-  margin-left: auto;
-}
-
-.no-results-wrap {
-  padding: 0 $space-small;
-}
-
-.no-results {
-  margin: $space-normal 0 0 0;
-  color: $color-gray;
-  font-weight: $font-weight-normal;
-}
-
-.error {
-  color: $alert-color;
-  font-size: $font-size-mini;
-  font-weight: $font-weight-medium;
 }
 </style>

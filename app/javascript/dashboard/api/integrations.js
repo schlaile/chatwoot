@@ -8,13 +8,30 @@ class IntegrationsAPI extends ApiClient {
   }
 
   connectSlack(code) {
-    return axios.post(`${this.baseUrl()}/integrations/slack`, {
-      code: code,
+    return axios.post(`${this.baseUrl()}/integrations/slack`, { code });
+  }
+
+  updateSlack({ referenceId, messageMode }) {
+    return axios.patch(`${this.baseUrl()}/integrations/slack`, {
+      reference_id: referenceId,
+      message_mode: messageMode,
     });
+  }
+
+  listAllSlackChannels() {
+    return axios.get(`${this.baseUrl()}/integrations/slack/list_all_channels`);
   }
 
   delete(integrationId) {
     return axios.delete(`${this.baseUrl()}/integrations/${integrationId}`);
+  }
+
+  createHook(hookData) {
+    return axios.post(`${this.baseUrl()}/integrations/hooks`, hookData);
+  }
+
+  deleteHook(hookId) {
+    return axios.delete(`${this.baseUrl()}/integrations/hooks/${hookId}`);
   }
 }
 

@@ -2,188 +2,413 @@
 #
 # Table name: conversations
 #
-#  id                    :integer          not null, primary key
-#  additional_attributes :jsonb
-#  agent_last_seen_at    :datetime
-#  contact_last_seen_at  :datetime
-#  identifier            :string
-#  locked                :boolean          default(FALSE)
-#  status                :integer          default("open"), not null
-#  uuid                  :uuid             not null
-#  created_at            :datetime         not null
-#  updated_at            :datetime         not null
-#  account_id            :integer          not null
-#  assignee_id           :integer
-#  contact_id            :bigint
-#  contact_inbox_id      :bigint
-#  display_id            :integer          not null
-#  inbox_id              :integer          not null
+#  id                     :integer          not null, primary key
+#  additional_attributes  :jsonb
+#  ai_assignee_type       :string
+#  agent_last_seen_at     :datetime
+#  assignee_last_seen_at  :datetime
+#  cached_label_list      :text
+#  contact_last_seen_at   :datetime
+#  custom_attributes      :jsonb
+#  first_reply_created_at :datetime
+#  identifier             :string
+#  last_activity_at       :datetime         not null
+#  priority               :integer
+#  snoozed_until          :datetime
+#  status                 :integer          default("open"), not null
+#  status_changed_at      :datetime
+#  uuid                   :uuid             not null
+#  waiting_since          :datetime
+#  created_at             :datetime         not null
+#  updated_at             :datetime         not null
+#  account_id             :integer          not null
+#  assignee_agent_bot_id  :bigint
+#  assignee_id            :integer
+#  campaign_id            :bigint
+#  contact_id             :bigint
+#  contact_inbox_id       :bigint
+#  display_id             :integer          not null
+#  inbox_id               :integer          not null
+#  sla_policy_id          :bigint
+#  team_id                :bigint
 #
 # Indexes
 #
-#  index_conversations_on_account_id                 (account_id)
-#  index_conversations_on_account_id_and_display_id  (account_id,display_id) UNIQUE
-#  index_conversations_on_contact_inbox_id           (contact_inbox_id)
-#
-# Foreign Keys
-#
-#  fk_rails_...  (contact_inbox_id => contact_inboxes.id)
+#  conv_acid_inbid_stat_asgnid_idx                    (account_id,inbox_id,status,assignee_id)
+#  index_conversations_on_account_id                  (account_id)
+#  index_conversations_on_account_id_and_display_id   (account_id,display_id) UNIQUE
+#  index_conversations_on_assignee_id_and_account_id  (assignee_id,account_id)
+#  index_conversations_on_campaign_id                 (campaign_id)
+#  index_conversations_on_contact_id                  (contact_id)
+#  index_conversations_on_contact_inbox_id            (contact_inbox_id)
+#  index_conversations_on_created_at                  (created_at)
+#  index_conversations_on_first_reply_created_at      (first_reply_created_at)
+#  index_conversations_on_id_and_account_id           (account_id,id)
+#  index_conversations_on_identifier_and_account_id   (identifier,account_id)
+#  index_conversations_on_inbox_id                    (inbox_id)
+#  index_conversations_on_priority                    (priority)
+#  index_conversations_on_sla_policy_id               (sla_policy_id) WHERE (sla_policy_id IS NOT NULL)
+#  index_conversations_on_status_and_account_id       (status,account_id)
+#  index_conversations_on_status_and_priority         (status,priority)
+#  index_conversations_on_team_id                     (team_id)
+#  index_conversations_on_uuid                        (uuid) UNIQUE
+#  index_conversations_on_waiting_since               (waiting_since)
 #
 
 class Conversation < ApplicationRecord
+  include Labelable
+  include LlmFormattable
+  include AssignmentHandler
+  include AutoAssignmentHandler
+  include ActivityMessageHandler
+  include UrlHelper
+  include SortHandler
+  include PushDataHelper
+  include ConversationMuteHelpers
+
+  CONVERSATION_UPDATED_ADDITIONAL_ATTRIBUTE_KEYS = %w[conversation_language auto_translate_disabled].freeze
+  FILTERED_UNREAD_COUNT_ADDITIONAL_ATTRIBUTE_KEYS = %w[browser_language conversation_language mail_subject referer].freeze
+  FILTERED_UNREAD_COUNT_UPDATE_KEYS = %w[
+    cached_label_list campaign_id custom_attributes first_reply_created_at label_list last_activity_at priority snoozed_until waiting_since
+  ].freeze
+  private_constant :CONVERSATION_UPDATED_ADDITIONAL_ATTRIBUTE_KEYS, :FILTERED_UNREAD_COUNT_ADDITIONAL_ATTRIBUTE_KEYS,
+                   :FILTERED_UNREAD_COUNT_UPDATE_KEYS
+
   validates :account_id, presence: true
   validates :inbox_id, presence: true
+  validates :contact_id, presence: true
+  before_validation :validate_additional_attributes
+  before_validation :clear_invalid_ai_assignee
+  validates :additional_attributes, jsonb_attributes_length: true
+  validates :custom_attributes, jsonb_attributes_length: true
+  validates :uuid, uniqueness: true
+  validate :validate_referer_url
 
-  enum status: { open: 0, resolved: 1, bot: 2 }
+  enum :status, { open: 0, resolved: 1, pending: 2, snoozed: 3 }
+  enum :priority, { low: 0, medium: 1, high: 2, urgent: 3 }
 
-  scope :latest, -> { order(updated_at: :desc) }
-  scope :unassigned, -> { where(assignee_id: nil) }
+  scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
+  scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }
   scope :assigned_to, ->(agent) { where(assignee_id: agent.id) }
+  scope :sort_on_unread, lambda { |_direction|
+    order(unread_messages_count_arel.desc).sort_on_last_activity_at('desc')
+  }
+  scope :unattended, -> { where(first_reply_created_at: nil).or(where.not(waiting_since: nil)) }
+  scope :resolvable_not_waiting, lambda { |auto_resolve_after|
+    return none if auto_resolve_after.to_i.zero?
+
+    open.where('last_activity_at < ? AND waiting_since IS NULL', Time.now.utc - auto_resolve_after.minutes)
+  }
+  scope :resolvable_all, lambda { |auto_resolve_after|
+    return none if auto_resolve_after.to_i.zero?
+
+    open.where('last_activity_at < ?', Time.now.utc - auto_resolve_after.minutes)
+  }
+
+  scope :last_user_message_at, lambda {
+    joins(
+      "INNER JOIN (#{last_messaged_conversations.to_sql}) AS grouped_conversations
+      ON grouped_conversations.conversation_id = conversations.id"
+    ).sort_on_last_user_message_at
+  }
 
   belongs_to :account
   belongs_to :inbox
-  belongs_to :assignee, class_name: 'User', optional: true
+  belongs_to :assignee, class_name: 'User', optional: true, inverse_of: :assigned_conversations
+  belongs_to :ai_assignee,
+             polymorphic: true,
+             foreign_key: :assignee_agent_bot_id,
+             foreign_type: :ai_assignee_type,
+             optional: true
   belongs_to :contact
   belongs_to :contact_inbox
+  belongs_to :team, optional: true
+  belongs_to :campaign, optional: true
 
-  has_many :messages, dependent: :destroy, autosave: true
+  has_many :mentions, dependent: :destroy_async
+  has_many :messages, dependent: :destroy_async, autosave: true
+  has_one :csat_survey_response, dependent: :destroy_async
+  has_many :conversation_participants, dependent: :destroy_async
+  has_many :notifications, as: :primary_actor, dependent: :destroy_async
+  has_many :attachments, through: :messages
+  has_many :reporting_events, dependent: :destroy_async
+  has_many :automation_rule_pending_executions, dependent: :delete_all
 
-  before_create :set_bot_conversation
-  before_create :set_display_id, unless: :display_id?
-  # wanted to change this to after_update commit. But it ended up creating a loop
-  # reinvestigate in future and identity the implications
-  after_update :notify_status_change, :create_activity
+  before_save :ensure_snooze_until_reset
+  before_save :set_status_changed_at
+  before_create :determine_conversation_status
+  before_create :ensure_waiting_since
+  after_create :mark_contact_as_lead
+
+  after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation
-  after_save :run_round_robin
+  after_create_commit :load_attributes_created_by_db_triggers
+  before_destroy :set_unread_count_deletion_data
+  after_destroy_commit :notify_conversation_deletion
 
-  acts_as_taggable_on :labels
+  delegate :auto_resolve_after, to: :account
 
   def can_reply?
-    return true unless inbox&.channel&.has_24_hour_messaging_window?
-
-    last_incoming_message = messages.incoming.last
-
-    return false if last_incoming_message.nil?
-
-    Time.current < last_incoming_message.created_at + 24.hours
+    Conversations::MessageWindowService.new(self).can_reply?
   end
 
-  def update_assignee(agent = nil)
-    update!(assignee: agent)
+  def language
+    additional_attributes&.dig('conversation_language')
   end
 
-  def update_labels(labels = nil)
-    update!(label_list: labels)
+  # Be aware: The precision of created_at and last_activity_at may differ from Ruby's Time precision.
+  # Our DB column (see schema) stores timestamps with second-level precision (no microseconds), so
+  # if you assign a Ruby Time with microseconds, the DB will truncate it. This may cause subtle differences
+  # if you compare or copy these values in Ruby, also in our specs
+  # So in specs rely on to be_with(1.second) instead of to eq()
+  # TODO: Migrate to use a timestamp with microsecond precision
+  def last_activity_at
+    self[:last_activity_at] || created_at
+  end
+
+  def last_incoming_message
+    messages.where(account_id: account_id)&.incoming&.last
   end
 
   def toggle_status
     # FIXME: implement state machine with aasm
     self.status = open? ? :resolved : :open
-    self.status = :open if bot?
+    self.status = :open if pending? || snoozed?
     save
   end
 
-  def mute!
-    resolved!
-    Redis::Alfred.setex(mute_key, 1, mute_period)
+  def toggle_priority(priority = nil)
+    self.priority = priority.presence
+    save
   end
 
-  def muted?
-    !Redis::Alfred.get(mute_key).nil?
+  def bot_handoff!(dispatch_event: true)
+    # Best-effort eligibility check, not a lock against concurrent takeovers.
+    # The dashboard checks assignment/status again before playing the alert.
+    return false unless pending?
+
+    update(waiting_since: Time.current) if waiting_since.blank?
+    self.ai_assignee = nil
+    open!
+    dispatch_bot_handoff_event if dispatch_event
   end
 
-  def lock!
-    update!(locked: true)
-  end
-
-  def unlock!
-    update!(locked: false)
+  def dispatch_bot_handoff_event
+    dispatcher_dispatch(CONVERSATION_BOT_HANDOFF)
   end
 
   def unread_messages
-    messages.unread_since(agent_last_seen_at)
+    agent_last_seen_at.present? ? messages.created_since(agent_last_seen_at) : messages
+  end
+
+  def assignee_unread_messages
+    assignee_last_seen_at.present? ? messages.created_since(assignee_last_seen_at) : messages
   end
 
   def unread_incoming_messages
-    messages.incoming.unread_since(agent_last_seen_at)
+    unread_messages.where(account_id: account_id).incoming.last(10)
   end
 
-  def push_event_data
-    Conversations::EventDataPresenter.new(self).push_data
-  end
-
-  def lock_event_data
-    Conversations::EventDataPresenter.new(self).lock_data
-  end
-
-  def webhook_data
-    Conversations::EventDataPresenter.new(self).push_data
+  def cached_label_list_array
+    (cached_label_list || '').split(',').map(&:strip)
   end
 
   def notifiable_assignee_change?
-    return false if self_assign?(assignee_id)
     return false unless saved_change_to_assignee_id?
     return false if assignee_id.blank?
+    return false if self_assign?(assignee_id)
 
     true
   end
 
+  # Virtual attribute till we switch completely to polymorphic assignee
+  def assignee_type
+    return ai_assignee_type if ai_assignee_type.present?
+    return 'User' if assignee_id.present?
+
+    nil
+  end
+
+  def assigned_entity
+    ai_assignee || assignee
+  end
+
+  def tweet?
+    inbox.inbox_type == 'Twitter' && additional_attributes['type'] == 'tweet'
+  end
+
+  def self.unread_messages_count_arel
+    messages = Message.arel_table
+    conversations = arel_table
+    unread_messages = messages
+                      .project(messages[:id].count)
+                      .where(unread_messages_condition(messages, conversations))
+
+    Arel::Nodes::Grouping.new(unread_messages.ast)
+  end
+
+  def self.unread_messages_condition(messages, conversations)
+    messages[:conversation_id].eq(conversations[:id])
+                              .and(messages[:account_id].eq(conversations[:account_id]))
+                              .and(messages[:message_type].eq(Message.message_types[:incoming]))
+                              .and(
+                                conversations[:agent_last_seen_at].eq(nil)
+                                  .or(messages[:created_at].gt(conversations[:agent_last_seen_at]))
+                              )
+  end
+
+  def recent_messages
+    messages.chat.last(5)
+  end
+
+  def csat_survey_link
+    "#{ENV.fetch('FRONTEND_URL', nil)}/survey/responses/#{uuid}"
+  end
+
+  def dispatch_conversation_updated_event(previous_changes = nil)
+    dispatcher_dispatch(CONVERSATION_UPDATED, previous_changes)
+  end
+
   private
 
-  def set_bot_conversation
-    self.status = :bot if inbox.agent_bot_inbox&.active?
+  def execute_after_update_commit_callbacks
+    handle_resolved_status_change
+    notify_status_change
+    create_activity
+    invalidate_filtered_unread_count_conversation
+    notify_conversation_updation
+  end
+
+  def handle_resolved_status_change
+    # When conversation is resolved, clear waiting_since using update_column to avoid callbacks
+    return unless saved_change_to_status? && status == 'resolved'
+
+    # rubocop:disable Rails/SkipsModelValidations
+    update_column(:waiting_since, nil)
+    # rubocop:enable Rails/SkipsModelValidations
+  end
+
+  def ensure_snooze_until_reset
+    self.snoozed_until = nil unless snoozed?
+  end
+
+  def set_status_changed_at
+    self.status_changed_at = Time.current if new_record? || status_changed?
+  end
+
+  def ensure_waiting_since
+    self.waiting_since = created_at
+  end
+
+  def mark_contact_as_lead
+    contact.update(contact_type: :lead) if contact.visitor?
+  end
+
+  def validate_additional_attributes
+    self.additional_attributes = {} unless additional_attributes.is_a?(Hash)
+  end
+
+  def clear_invalid_ai_assignee
+    self.ai_assignee = nil if assignee_id.present? || (status_changed? && open?)
+  end
+
+  def determine_conversation_status
+    self.status = :resolved and return if contact.blocked?
+
+    return handle_campaign_status if campaign.present?
+
+    set_active_bot_conversation if inbox.active_bot?
+  end
+
+  def handle_campaign_status
+    set_active_bot_conversation if campaign.sender_id.nil? && inbox.active_bot?
+  end
+
+  def set_active_bot_conversation
+    # TODO: make this an inbox config instead of assuming bot conversations should start as pending
+    self.status = :pending
+    return unless inbox.agent_bot_inbox&.active? && assignee_id.blank?
+
+    self.ai_assignee = inbox.agent_bot
   end
 
   def notify_conversation_creation
     dispatcher_dispatch(CONVERSATION_CREATED)
   end
 
-  def self_assign?(assignee_id)
-    assignee_id.present? && Current.user&.id == assignee_id
+  def notify_conversation_deletion
+    return if @unread_count_deletion_data.blank?
+
+    Rails.configuration.dispatcher.dispatch(CONVERSATION_DELETED, Time.zone.now, conversation_data: @unread_count_deletion_data)
   end
 
-  def set_display_id
-    self.display_id = loop do
-      next_display_id = account.conversations.maximum('display_id').to_i + 1
-      break next_display_id unless account.conversations.exists?(display_id: next_display_id)
-    end
+  def notify_conversation_updation
+    return unless previous_changes.keys.present? && allowed_keys?
+
+    dispatch_conversation_updated_event(previous_changes)
   end
 
-  def create_activity
-    return unless Current.user
-
-    user_name = Current.user&.available_name
-
-    create_status_change_message(user_name) if saved_change_to_status?
-    create_assignee_change(user_name) if saved_change_to_assignee_id?
+  def list_of_keys
+    %w[team_id assignee_id assignee_agent_bot_id ai_assignee_type status snoozed_until custom_attributes label_list waiting_since
+       first_reply_created_at priority]
   end
 
-  def activity_message_params(content)
-    { account_id: account_id, inbox_id: inbox_id, message_type: :activity, content: content }
+  def allowed_keys?
+    previous_changes.keys.intersect?(list_of_keys) ||
+      additional_attributes_changed?(CONVERSATION_UPDATED_ADDITIONAL_ATTRIBUTE_KEYS)
+  end
+
+  def invalidate_filtered_unread_count_conversation
+    return unless filtered_unread_count_update?
+
+    ::Conversations::UnreadCounts::FilteredCountInvalidator.new(account).conversation_changed!
+  end
+
+  def filtered_unread_count_update?
+    previous_changes.keys.intersect?(FILTERED_UNREAD_COUNT_UPDATE_KEYS) ||
+      additional_attributes_changed?(FILTERED_UNREAD_COUNT_ADDITIONAL_ATTRIBUTE_KEYS)
+  end
+
+  def additional_attributes_changed?(keys)
+    Array(previous_changes['additional_attributes']).compact.any? { |attributes| attributes.keys.intersect?(keys) }
+  end
+
+  def load_attributes_created_by_db_triggers
+    # Display id is set via a trigger in the database
+    # So we need to specifically fetch it after the record is created
+    # We can't use reload because it will clear the previous changes, which we need for the dispatcher
+    obj_from_db = self.class.find(id)
+    self[:display_id] = obj_from_db[:display_id]
+    self[:uuid] = obj_from_db[:uuid]
   end
 
   def notify_status_change
     {
       CONVERSATION_OPENED => -> { saved_change_to_status? && open? },
       CONVERSATION_RESOLVED => -> { saved_change_to_status? && resolved? },
+      CONVERSATION_STATUS_CHANGED => -> { saved_change_to_status? },
       CONVERSATION_READ => -> { saved_change_to_contact_last_seen_at? },
-      CONVERSATION_LOCK_TOGGLE => -> { saved_change_to_locked? },
-      ASSIGNEE_CHANGED => -> { saved_change_to_assignee_id? },
       CONVERSATION_CONTACT_CHANGED => -> { saved_change_to_contact_id? }
     }.each do |event, condition|
-      condition.call && dispatcher_dispatch(event)
+      condition.call && dispatcher_dispatch(event, status_change)
     end
   end
 
-  def dispatcher_dispatch(event_name)
-    Rails.configuration.dispatcher.dispatch(event_name, Time.zone.now, conversation: self)
+  def dispatcher_dispatch(event_name, changed_attributes = nil)
+    Rails.configuration.dispatcher.dispatch(event_name, Time.zone.now, conversation: self, notifiable_assignee_change: notifiable_assignee_change?,
+                                                                       changed_attributes: changed_attributes,
+                                                                       performed_by: Current.executed_by)
   end
 
-  def should_round_robin?
-    return false unless inbox.enable_auto_assignment?
-
-    # run only if assignee is blank or doesn't have access to inbox
-    assignee.blank? || inbox.members.exclude?(assignee)
+  def set_unread_count_deletion_data
+    @unread_count_deletion_data = {
+      id: id,
+      account_id: account_id,
+      inbox_id: inbox_id,
+      assignee_id: assignee_id,
+      team_id: team_id,
+      cached_label_list: cached_label_list
+    }
   end
 
   def conversation_status_changed_to_open?
@@ -192,34 +417,28 @@ class Conversation < ApplicationRecord
     return true if previous_changes.key?(:id) || saved_change_to_status?
   end
 
-  def run_round_robin
-    # Round robin kicks in on conversation create & update
-    # run it only when conversation status changes to open
-    return unless conversation_status_changed_to_open?
-    return unless should_round_robin?
+  def create_label_change(user_name)
+    return unless user_name
 
-    ::RoundRobin::AssignmentService.new(conversation: self).perform
+    previous_labels, current_labels = previous_changes[:label_list]
+    return unless (previous_labels.is_a? Array) && (current_labels.is_a? Array)
+
+    create_label_added(user_name, current_labels - previous_labels)
+    create_label_removed(user_name, previous_labels - current_labels)
   end
 
-  def create_status_change_message(user_name)
-    content = I18n.t("conversations.activity.status.#{status}", user_name: user_name)
+  def validate_referer_url
+    return unless additional_attributes['referer']
 
-    messages.create(activity_message_params(content))
+    self['additional_attributes']['referer'] = nil unless url_valid?(additional_attributes['referer'])
   end
 
-  def create_assignee_change(user_name)
-    params = { assignee_name: assignee&.available_name, user_name: user_name }.compact
-    key = assignee_id ? 'assigned' : 'removed'
-    content = I18n.t("conversations.activity.assignee.#{key}", **params)
-
-    messages.create(activity_message_params(content))
-  end
-
-  def mute_key
-    format('CONVERSATION::%<id>d::MUTED', id: id)
-  end
-
-  def mute_period
-    6.hours
+  # creating db triggers
+  trigger.before(:insert).for_each(:row) do
+    "NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);"
   end
 end
+
+Conversation.include_mod_with('Audit::Conversation')
+Conversation.include_mod_with('Concerns::Conversation')
+Conversation.prepend_mod_with('Conversation')

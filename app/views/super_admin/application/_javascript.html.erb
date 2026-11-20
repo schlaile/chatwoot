@@ -11,6 +11,9 @@ by providing a `content_for(:javascript)` block.
   <%= javascript_include_tag js_path %>
 <% end %>
 
+<%= javascript_include_tag 'rails-ujs' %>
+<%= javascript_include_tag 'belongsToSearchField' %>
+
 <%= yield :javascript %>
 
 <% if Rails.env.test? %>
@@ -19,3 +22,32 @@ by providing a `content_for(:javascript)` block.
     $.ajaxSetup({ async: false });
   <% end %>
 <% end %>
+
+<% support_user = SuperAdmin.first %>
+<script>
+window.chatwootSettings = {
+  hideMessageBubble: true,
+};
+
+(function(d,t) {
+  var BASE_URL = '';
+  var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+  g.src= BASE_URL + "/packs/js/sdk.js";
+  g.async = true;
+  s.parentNode.insertBefore(g,s);
+  g.onload=function(){
+    window.chatwootSDK.run({
+      websiteToken: '<%= ChatwootHub.support_config[:support_website_token] %>',
+      baseUrl: '<%= ChatwootHub.support_config[:support_script_url] %>'
+    })
+  }
+})(document,"script");
+
+window.addEventListener('chatwoot:ready', function() {
+  window.$chatwoot.setUser('<%= ChatwootHub.installation_identifier %>', {
+    identifier_hash: '<%= ChatwootHub.support_config[:support_identifier_hash] %>',
+    email: '<%= support_user.email %>',
+    name: '<%= support_user.name %>'
+  });
+})
+</script>

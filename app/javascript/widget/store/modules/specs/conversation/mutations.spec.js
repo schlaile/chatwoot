@@ -1,4 +1,4 @@
-import { mutations } from '../../conversation';
+import { mutations } from '../../conversation/mutations';
 
 const temporaryMessagePayload = {
   content: 'hello',
@@ -70,6 +70,17 @@ describe('#mutations', () => {
       const state = { uiFlags: { isFetchingList: false } };
       mutations.setConversationListLoading(state, true);
       expect(state.uiFlags.isFetchingList).toEqual(true);
+    });
+  });
+
+  describe('#setConversationUIFlag', () => {
+    it('set uiFlags correctly', () => {
+      const state = { uiFlags: { isFetchingList: false } };
+      mutations.setConversationUIFlag(state, { isCreating: true });
+      expect(state.uiFlags).toEqual({
+        isFetchingList: false,
+        isCreating: true,
+      });
     });
   });
 
@@ -152,6 +163,157 @@ describe('#mutations', () => {
               file_type: 'image',
             },
           ],
+        },
+      });
+    });
+  });
+
+  describe('#clearConversations', () => {
+    it('clears conversations and pending metadata', () => {
+      const state = {
+        conversations: { 1: { id: 1 } },
+        pendingCustomAttributes: { plan: 'enterprise' },
+        pendingLabels: ['vip'],
+      };
+      mutations.clearConversations(state);
+      expect(state.conversations).toEqual({});
+      expect(state.pendingCustomAttributes).toEqual({});
+      expect(state.pendingLabels).toEqual([]);
+    });
+  });
+
+  describe('#setPendingCustomAttributes', () => {
+    it('merges custom attributes into pending state', () => {
+      const state = { pendingCustomAttributes: { existing: 'value' } };
+      mutations.setPendingCustomAttributes(state, { plan: 'enterprise' });
+      expect(state.pendingCustomAttributes).toEqual({
+        existing: 'value',
+        plan: 'enterprise',
+      });
+    });
+  });
+
+  describe('#setPendingLabels', () => {
+    it('adds label to pending state', () => {
+      const state = { pendingLabels: [] };
+      mutations.setPendingLabels(state, 'vip');
+      expect(state.pendingLabels).toEqual(['vip']);
+    });
+
+    it('does not add duplicate labels', () => {
+      const state = { pendingLabels: ['vip'] };
+      mutations.setPendingLabels(state, 'vip');
+      expect(state.pendingLabels).toEqual(['vip']);
+    });
+  });
+
+  describe('#removePendingCustomAttribute', () => {
+    it('removes a single key from pending custom attributes', () => {
+      const state = {
+        pendingCustomAttributes: { plan: 'enterprise', region: 'us' },
+      };
+      mutations.removePendingCustomAttribute(state, 'plan');
+      expect(state.pendingCustomAttributes).toEqual({ region: 'us' });
+    });
+  });
+
+  describe('#removePendingLabel', () => {
+    it('removes a label from pending labels', () => {
+      const state = { pendingLabels: ['vip', 'premium'] };
+      mutations.removePendingLabel(state, 'vip');
+      expect(state.pendingLabels).toEqual(['premium']);
+    });
+
+    it('does nothing if label not present', () => {
+      const state = { pendingLabels: ['vip'] };
+      mutations.removePendingLabel(state, 'premium');
+      expect(state.pendingLabels).toEqual(['vip']);
+    });
+  });
+
+  describe('#clearPendingConversationMetadata', () => {
+    it('clears pending custom attributes and labels', () => {
+      const state = {
+        pendingCustomAttributes: { plan: 'enterprise' },
+        pendingLabels: ['vip'],
+      };
+      mutations.clearPendingConversationMetadata(state);
+      expect(state.pendingCustomAttributes).toEqual({});
+      expect(state.pendingLabels).toEqual([]);
+    });
+  });
+
+  describe('#deleteMessage', () => {
+    it('delete the message from conversation', () => {
+      const state = { conversations: { 1: { id: 1 } } };
+      mutations.deleteMessage(state, 1);
+      expect(state.conversations).toEqual({});
+    });
+  });
+
+  describe('#setMissingMessages', () => {
+    it('sets messages if payload is not empty', () => {
+      const state = {
+        uiFlags: { allMessagesLoaded: false },
+        conversations: {
+          454: {
+            id: 454,
+            content: 'hi',
+            message_type: 0,
+            content_type: 'text',
+            content_attributes: {},
+            created_at: 1682432667,
+            conversation_id: 20,
+          },
+          464: {
+            id: 464,
+            content: 'hey will be back soon',
+            message_type: 3,
+            content_type: 'text',
+            content_attributes: {},
+            created_at: 1682490729,
+            conversation_id: 20,
+          },
+        },
+      };
+      mutations.setMessagesInConversation(state, [
+        {
+          id: 455,
+          content: 'Hey billowing-grass-423 how are you?',
+          message_type: 3,
+          content_type: 'text',
+          content_attributes: {},
+          created_at: 1682432667,
+          conversation_id: 20,
+        },
+      ]);
+      expect(state.conversations).toEqual({
+        454: {
+          id: 454,
+          content: 'hi',
+          message_type: 0,
+          content_type: 'text',
+          content_attributes: {},
+          created_at: 1682432667,
+          conversation_id: 20,
+        },
+        455: {
+          id: 455,
+          content: 'Hey billowing-grass-423 how are you?',
+          message_type: 3,
+          content_type: 'text',
+          content_attributes: {},
+          created_at: 1682432667,
+          conversation_id: 20,
+        },
+        464: {
+          id: 464,
+          content: 'hey will be back soon',
+          message_type: 3,
+          content_type: 'text',
+          content_attributes: {},
+          created_at: 1682490729,
+          conversation_id: 20,
         },
       });
     });

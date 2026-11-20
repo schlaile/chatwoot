@@ -1,10 +1,13 @@
 source 'https://rubygems.org'
 
-ruby '2.7.1'
+ruby '3.4.13'
 
 ##-- base gems for rails --##
-gem 'rack-cors', require: 'rack/cors'
-gem 'rails'
+
+gem 'rack-cors', '2.0.0', require: 'rack/cors'
+gem 'rails', '8.0.5.2'
+gem 'sprockets-rails', '~> 3.5'
+
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
 
@@ -15,121 +18,264 @@ gem 'browser'
 gem 'hashie'
 gem 'jbuilder'
 gem 'kaminari'
-gem 'responders'
+gem 'responders', '>= 3.1.1'
 gem 'rest-client'
 gem 'telephone_number'
-gem 'time_diff'
 gem 'tzinfo-data'
 gem 'valid_email2'
+gem 'email-provider-info'
+gem 'gemoji'
 # compress javascript config.assets.js_compressor
 gem 'uglifier'
 ##-- used for single column multiple binary flags in notification settings/feature flagging --##
 gem 'flag_shih_tzu'
 # Random name generator for user names
 gem 'haikunator'
-# Template parsing safetly
+# Template parsing safely
 gem 'liquid'
+# Parse Markdown to HTML
+gem 'commonmarker'
+# Validate Data against JSON Schema
+gem 'json_schemer'
+# used in swagger build
+gem 'json_refs'
+# Rack middleware for blocking & throttling abusive requests
+gem 'rack-attack', '>= 6.7.0'
+# a utility tool for streaming, flexible and safe downloading of remote files
+gem 'down'
+# SSRF-safe URL fetching
+gem 'ssrf_filter', '~> 1.5'
+# authentication type to fetch and send mail over oauth2.0
+gem 'gmail_xoauth'
+# Lock net-smtp to 0.3.4 to avoid issues with gmail_xoauth2
+gem 'net-smtp',  '~> 0.3.4'
+# Prevent CSV injection
+gem 'csv-safe'
 
 ##-- for active storage --##
 gem 'aws-sdk-s3', require: false
-gem 'azure-storage-blob', require: false
-gem 'google-cloud-storage', require: false
-gem 'mini_magick'
+gem 'aws-sdk-sesv2', require: false
+gem 'azure-blob', require: false
+gem 'google-cloud-storage', '>= 1.48.0', require: false
+gem 'image_processing'
+# Rails 8.0.5.1+ requires the API that blocks untrusted libvips operations.
+gem 'ruby-vips', '~> 2.2', '>= 2.2.1', require: false
+
+##-- for actionmailbox --##
+gem 'aws-actionmailbox-ses', '~> 0'
 
 ##-- gems for database --#
-gem 'groupdate'
+gem 'groupdate', '>= 6.8.0'
 gem 'pg'
 gem 'redis'
 gem 'redis-namespace'
-gem 'redis-rack-cache'
+# super fast record imports in bulk
+gem 'activerecord-import'
+
+gem 'searchkick'
+gem 'opensearch-ruby'
+gem 'faraday_middleware-aws-sigv4'
 
 ##--- gems for server & infra configuration ---##
-gem 'dotenv-rails'
+gem 'dotenv-rails', '>= 3.0.0'
 gem 'foreman'
-gem 'puma'
-gem 'webpacker', '~> 5.x'
+gem 'puma', '~> 7.2', '>= 7.2.1'
+gem 'vite_rails'
 # metrics on heroku
 gem 'barnes'
 
 ##--- gems for authentication & authorization ---##
-gem 'devise'
-gem 'devise_token_auth'
+gem 'devise', '>= 4.9.4'
+# 2.2.3 requires Devise 5; Chatwoot remains on Devise 4 for this upgrade stack.
+gem 'devise-secure_password', '2.2.1'
+gem 'devise_token_auth', '>= 1.2.3'
+gem 'rails-i18n', '~> 8.0.2'
+# two-factor authentication
+gem 'devise-two-factor', '>= 5.0.0'
 # authorization
-gem 'jwt'
+gem 'jwt', '~> 2.10', '>= 2.10.3'
 gem 'pundit'
+
 # super admin
-gem 'administrate'
+gem 'administrate', '1.0.0'
+gem 'administrate-field-active_storage', '1.0.6'
 
 ##--- gems for pubsub service ---##
 # https://karolgalanciak.com/blog/2019/11/30/from-activerecord-callbacks-to-publish-slash-subscribe-pattern-and-event-driven-design/
 gem 'wisper', '2.0.0'
 
 ##--- gems for channels ---##
-# TODO: bump up gem to 2.0
-gem 'facebook-messenger', '1.5.0'
-gem 'telegram-bot-ruby'
-gem 'twilio-ruby', '~> 5.32.0'
+gem 'facebook-messenger'
+gem 'line-bot-api'
+gem 'twilio-ruby'
 # twitty will handle subscription of twitter account events
 # gem 'twitty', git: 'https://github.com/chatwoot/twitty'
-gem 'twitty'
+gem 'twitty', '~> 0.1.5'
 # facebook client
 gem 'koala'
 # slack client
-gem 'slack-ruby-client'
+gem 'slack-ruby-client', '~> 2.7.0'
+# for dialogflow integrations
+gem 'google-cloud-dialogflow-v2', '>= 0.24.0'
+gem 'grpc'
+# Translate integrations
+# 'google-cloud-translate' gem depends on faraday 2.0 version
+# this dependency breaks the slack-ruby-client gem
+gem 'google-cloud-translate-v3', '>= 0.7.0'
 
-##--- gems for debugging and error reporting ---##
-# static analysis
-gem 'brakeman'
-gem 'scout_apm'
-gem 'sentry-raven'
+##-- apm and error monitoring ---#
+# loaded only when environment variables are set.
+# ref application.rb
+gem 'datadog', '~> 2.0', require: false
+gem 'elastic-apm', require: false
+gem 'newrelic_rpm', require: false
+gem 'newrelic-sidekiq-metrics', '>= 1.6.2', require: false
+gem 'scout_apm', require: false
+gem 'sentry-rails', '>= 5.19.0', require: false
+gem 'sentry-ruby', require: false
+gem 'sentry-sidekiq', '>= 5.19.0', require: false
 
 ##-- background job processing --##
-gem 'sidekiq'
+gem 'sidekiq', '~> 7.3.10'
+# We want cron jobs
+gem 'sidekiq-cron', '>= 2.4.0'
+# for sidekiq healthcheck
+gem 'sidekiq_alive'
+# publishes Sidekiq queue metrics to CloudWatch for autoscaling (opt-in via ENABLE_SIDEKIQ_CLOUDWATCH)
+gem 'speedshop-cloudwatch', '~> 0.2.1', require: false
 
 ##-- Push notification service --##
 gem 'fcm'
-gem 'webpush'
+# APNs VoIP pushes that ring iPhones through CallKit
+gem 'apnotic', '~> 1.8'
+gem 'web-push', '>= 3.0.1'
+
+##-- geocoding / parse location from ip --##
+# http://www.rubygeocoder.com/
+gem 'geocoder'
+# to parse maxmind db
+gem 'maxminddb'
+
+# to create db triggers
+gem 'hairtrigger', '1.3.1'
+
+gem 'procore-sift'
+
+# parse email
+gem 'email_reply_trimmer'
+
+gem 'html2text'
+
+# to calculate working hours
+gem 'working_hours'
+
+# full text search for articles
+gem 'pg_search'
+
+# Subscriptions, Billing
+gem 'stripe', '~> 18.0'
+
+## - helper gems --##
+## to populate db with sample data
+gem 'faker'
+
+# Include logrange conditionally in intializer using env variable
+gem 'lograge', '~> 0.14.0', require: false
+
+# worked with microsoft refresh token
+gem 'omniauth-oauth2'
+
+gem 'audited', '~> 5.8'
+
+# need for google auth
+gem 'omniauth', '>= 2.1.2'
+gem 'omniauth-saml'
+gem 'omniauth-google-oauth2', '>= 1.1.3'
+gem 'omniauth-rails_csrf_protection', '~> 1.0', '>= 1.0.2'
+
+## Gems for reponse bot
+# adds cosine similarity to postgres using vector extension
+gem 'neighbor'
+gem 'pgvector'
+# Convert Website HTML to Markdown
+gem 'reverse_markdown'
+
+gem 'iso-639'
+gem 'ruby-openai'
+gem 'ai-agents', '~> 0.14.0'
+
+gem 'ruby_llm', '~> 2.1.1'
+
+gem 'cld3', '~> 3.7'
+
+# OpenTelemetry for LLM observability
+gem 'opentelemetry-sdk'
+gem 'opentelemetry-exporter-otlp'
+
+gem 'shopify_api'
+
+gem 'firecrawl-sdk', '~> 1.0', require: 'firecrawl'
+
+### Gems required only in specific deployment environments ###
+##############################################################
+
+group :production do
+  # we dont want request timing out in development while using byebug
+  gem 'rack-timeout'
+  # for heroku autoscaling
+  gem 'judoscale-rails', require: false
+  gem 'judoscale-sidekiq', require: false
+end
 
 group :development do
-  gem 'annotate'
+  gem 'annotaterb'
   gem 'bullet'
   gem 'letter_opener'
-  gem 'web-console'
-
-  # used in swagger build
-  gem 'json_refs', git: 'https://github.com/tzmfreedom/json_refs', ref: 'e32deb0'
+  gem 'scss_lint', require: false
+  gem 'web-console', '>= 4.2.1'
 
   # When we want to squash migrations
   gem 'squasher'
+
+  # profiling
+  gem 'rack-mini-profiler', '>= 3.2.0', require: false
+  gem 'stackprof'
+  # Should install the associated chrome extension to view query logs
+  gem 'meta_request', '>= 0.8.3'
+
+  gem 'tidewave'
 end
 
 group :test do
-  # Cypress in rails.
-  gem 'cypress-on-rails', '~> 1.0'
   # fast cleaning of database
   gem 'database_cleaner'
+  # mock http calls
+  gem 'webmock'
+  # test profiling
+  gem 'test-prof'
+  gem 'simplecov_json_formatter', require: false
 end
 
 group :development, :test do
-  # locking until https://github.com/codeclimate/test-reporter/issues/418 is resolved
-  gem 'action-cable-testing'
+  gem 'active_record_query_trace'
+  ##--- gems for debugging and error reporting ---##
+  # static analysis
+  gem 'brakeman'
   gem 'bundle-audit', require: false
   gem 'byebug', platform: :mri
-  gem 'factory_bot_rails'
-  gem 'faker'
-  gem 'listen'
-  gem 'mock_redis', git: 'https://github.com/sds/mock_redis', ref: '16d00789f0341a3aac35126c0ffe97a596753ff9'
-  gem 'pry-rails'
-  gem 'rspec-rails', '~> 4.0.0.beta2'
+  gem 'climate_control'
+  gem 'debug', '~> 1.8'
+  gem 'factory_bot_rails', '>= 6.4.3'
+  gem 'mock_redis'
+  gem 'rspec_junit_formatter'
+  gem 'rspec-rails', '>= 6.1.5'
   gem 'rubocop', require: false
   gem 'rubocop-performance', require: false
   gem 'rubocop-rails', require: false
   gem 'rubocop-rspec', require: false
-  gem 'scss_lint', require: false
+  gem 'rubocop-factory_bot', require: false
   gem 'seed_dump'
   gem 'shoulda-matchers'
-  gem 'simplecov', '0.17.1', require: false
-  gem 'spring'
-  gem 'spring-watcher-listen'
-  gem 'webmock'
+  gem 'simplecov', '>= 0.21', require: false
+  gem 'skooma'
 end

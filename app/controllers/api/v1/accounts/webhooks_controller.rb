@@ -16,21 +16,17 @@ class Api::V1::Accounts::WebhooksController < Api::V1::Accounts::BaseController
   end
 
   def destroy
-    @webhook.destroy
+    @webhook.destroy!
     head :ok
   end
 
   private
 
   def webhook_params
-    params.require(:webhook).permit(:inbox_id, :url)
+    params.require(:webhook).permit(:inbox_id, :name, :url, subscriptions: [])
   end
 
   def fetch_webhook
     @webhook = Current.account.webhooks.find(params[:id])
-  end
-
-  def check_authorization
-    authorize(Webhook)
   end
 end

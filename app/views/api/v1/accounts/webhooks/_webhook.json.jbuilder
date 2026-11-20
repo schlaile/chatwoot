@@ -1,7 +1,10 @@
 json.id webhook.id
+json.name webhook.name
 json.url webhook.url
 json.account_id webhook.account_id
-if webhook.inbox
+json.subscriptions webhook.subscriptions
+json.secret webhook.secret
+if webhook.inbox_belongs_to_account?
   json.inbox do
     json.id webhook.inbox.id
     json.name webhook.inbox.name

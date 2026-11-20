@@ -1,38 +1,35 @@
 {
   "AGENT_MGMT": {
-    "HEADER": "Agents",
-    "HEADER_BTN_TXT": "Add Agent",
-    "LOADING": "Fetching Agent List",
-    "SIDEBAR_TXT": "<p><b>Agents</b></p> <p> An <b>Agent</b> is a member of your Customer Support team. </p><p> Agents will be able to view and reply to messages from your users. The list shows all agents currently in your account. </p><p> Click on <b>Add Agent</b> to add a new agent. Agent you add will receive an email with a confirmation link to activate their account, after which they can access Chatwoot and respond to messages. </p><p> Access to Chatwoot's features are based on following roles. </p><p> <b>Agent</b> - Agents with this role can only access inboxes, reports and conversations. They can assign conversations to other agents or themselves and resolve conversations.</p><p> <b>Administrator</b> - Administrator will have access to all Chatwoot features enabled for your account, including settings, along with all of a normal agents' privileges.</p>",
-    "AGENT_TYPES": [
-      {
-        "name": "administrator",
-        "label": "Administrator"
-      },
-      {
-        "name": "agent",
-        "label": "Agent"
-      }
-    ],
+    "HEADER": "Edustajat",
+    "HEADER_BTN_TXT": "Lisää edustaja",
+    "LOADING": "Haetaan Edustajalistaa",
+    "DESCRIPTION": "An agent is a member of your customer support team who can view and respond to user messages. The list below shows all the agents in your account.",
+    "LEARN_MORE": "Learn about user roles",
+    "AGENT_TYPES": {
+      "ADMINISTRATOR": "Ylläpitäjä",
+      "AGENT": "Edustajat"
+    },
+    "COUNT": "{n} agent | {n} agents",
     "LIST": {
-      "404": "There are no agents associated to this account",
-      "TITLE": "Manage agents in your team",
-      "DESC": "You can add/remove agents to/in your team.",
-      "NAME": "Name",
-      "EMAIL": "EMAIL",
-      "STATUS": "Status",
-      "ACTIONS": "Actions",
-      "VERIFIED": "Verified",
-      "VERIFICATION_PENDING": "Verification Pending"
+      "404": "Tälle tilille ei ole liitetty edustajia",
+      "TITLE": "Hallitse edustajia tiimissäsi",
+      "DESC": "Voit lisätä tai poistaa edustajia tiimissäsi.",
+      "NAME": "Nimi",
+      "EMAIL": "Sähköposti",
+      "STATUS": "Tila",
+      "ACTIONS": "Toiminnot",
+      "VERIFIED": "Vahvistettu",
+      "VERIFICATION_PENDING": "Vahvistus odottaa",
+      "AVAILABLE_CUSTOM_ROLE": "Available custom role permissions"
     },
     "ADD": {
-      "TITLE": "Add agent to your team",
-      "DESC": "You can add people who will be able to handle support for your inboxes.",
-      "CANCEL_BUTTON_TEXT": "Cancel",
+      "TITLE": "Lisää edustaja tiimiisi",
+      "DESC": "Voit lisätä ihmisiä, jotka voivat vastata viesteihin saapuneet-kansiossa.",
+      "CANCEL_BUTTON_TEXT": "Peruuta",
       "FORM": {
         "NAME": {
-          "LABEL": "Agent Name",
-          "PLACEHOLDER": "Please enter a name of the agent"
+          "LABEL": "Edustajan nimi",
+          "PLACEHOLDER": "Ole hyvä ja kirjoita edustajan nimi"
         },
         "AGENT_TYPE": {
           "LABEL": "Agent Type",
@@ -40,36 +37,36 @@
           "ERROR": "Agent type is required"
         },
         "EMAIL": {
-          "LABEL": "Email Address",
-          "PLACEHOLDER": "Please enter an email address of the agent"
+          "LABEL": "Sähköpostiosoite",
+          "PLACEHOLDER": "Ole hyvä ja kirjoita edustajan sähköpostiosoite"
         },
-        "SUBMIT": "Add Agent"
+        "SUBMIT": "Lisää edustaja"
       },
       "API": {
-        "SUCCESS_MESSAGE": "Agent added successfully",
-        "EXIST_MESSAGE": "Agent email already in use, Please try another email address",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "SUCCESS_MESSAGE": "Edustaja lisätty onnistuneesti",
+        "EXIST_MESSAGE": "Edustajan sähköposti on jo käytössä, kokeile toista sähköpostiosoitetta",
+        "ERROR_MESSAGE": "Yhteyden muodostaminen Woot-palvelimelle ei onnistunut, yritä myöhemmin uudelleen"
       }
     },
     "DELETE": {
-      "BUTTON_TEXT": "Delete",
+      "BUTTON_TEXT": "Poista",
       "API": {
-        "SUCCESS_MESSAGE": "Agent deleted successfully",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "SUCCESS_MESSAGE": "Edustaja poistettu onnistuneesti",
+        "ERROR_MESSAGE": "Yhteyden muodostaminen Woot-palvelimelle ei onnistunut, yritä myöhemmin uudelleen"
       },
       "CONFIRM": {
-        "TITLE": "Confirm Deletion",
-        "MESSAGE": "Are you sure to delete ",
-        "YES": "Yes, Delete ",
-        "NO": "No, Keep "
+        "TITLE": "Vahvista poistaminen",
+        "MESSAGE": "Oletko varma että haluat poistaa ",
+        "YES": "Kyllä, poista ",
+        "NO": "Ei, säilytä "
       }
     },
     "EDIT": {
-      "TITLE": "Edit agent",
+      "TITLE": "Muokkaa edustajaa",
       "FORM": {
         "NAME": {
-          "LABEL": "Agent Name",
-          "PLACEHOLDER": "Please enter a name of the agent"
+          "LABEL": "Edustajan nimi",
+          "PLACEHOLDER": "Ole hyvä ja kirjoita edustajan nimi"
         },
         "AGENT_TYPE": {
           "LABEL": "Agent Type",
@@ -77,26 +74,54 @@
           "ERROR": "Agent type is required"
         },
         "EMAIL": {
-          "LABEL": "Email Address",
-          "PLACEHOLDER": "Please enter an email address of the agent"
+          "LABEL": "Sähköpostiosoite",
+          "PLACEHOLDER": "Ole hyvä ja kirjoita edustajan sähköpostiosoite"
         },
-        "SUBMIT": "Edit Agent"
+        "AGENT_AVAILABILITY": {
+          "LABEL": "Saatavuus",
+          "PLACEHOLDER": "Please select an availability status",
+          "ERROR": "Availability is required"
+        },
+        "SUBMIT": "Muokkaa edustajaa"
       },
-      "BUTTON_TEXT": "Edit",
-      "CANCEL_BUTTON_TEXT": "Cancel",
+      "BUTTON_TEXT": "Muokkaa",
+      "CANCEL_BUTTON_TEXT": "Peruuta",
       "API": {
-        "SUCCESS_MESSAGE": "Agent updated successfully",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "SUCCESS_MESSAGE": "Edustajaa muokattu onnistuneesti",
+        "ERROR_MESSAGE": "Yhteyden muodostaminen Woot-palvelimelle ei onnistunut, yritä myöhemmin uudelleen"
       },
       "PASSWORD_RESET": {
-        "ADMIN_RESET_BUTTON": "Reset Password",
-        "ADMIN_SUCCESS_MESSAGE": "An email with reset password instructions has been sent to the agent",
-        "SUCCESS_MESSAGE": "Agent password reset successfully",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "ADMIN_RESET_BUTTON": "Nollaa Salasana",
+        "ADMIN_SUCCESS_MESSAGE": "Edustajalle on lähetetty sähköposti, jossa on salasanan palautusohjeet",
+        "SUCCESS_MESSAGE": "Edustajan salasanan nollaus onnistui",
+        "ERROR_MESSAGE": "Yhteyden muodostaminen Woot-palvelimelle ei onnistunut, yritä myöhemmin uudelleen"
       }
     },
+    "SEARCH_PLACEHOLDER": "Search agents...",
+    "NO_RESULTS": "No agents found matching your search",
     "SEARCH": {
-      "NO_RESULTS": "No agents found."
+      "NO_RESULTS": "No results found."
+    },
+    "MULTI_SELECTOR": {
+      "PLACEHOLDER": "None",
+      "TITLE": {
+        "AGENT": "Select agent",
+        "TEAM": "Select team"
+      },
+      "LIST": {
+        "NONE": "None"
+      },
+      "SEARCH": {
+        "NO_RESULTS": {
+          "AGENT": "Edustajia ei löytynyt",
+          "TEAM": "No teams found"
+        },
+        "PLACEHOLDER": {
+          "AGENT": "Search agents",
+          "TEAM": "Search teams",
+          "INPUT": "Search for agents"
+        }
+      }
     }
   }
 }

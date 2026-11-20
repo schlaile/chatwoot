@@ -1,28 +1,11 @@
-<template>
-  <div class="file message-text__wrap" @click="openLink">
-    <div class="icon-wrap">
-      <i class="ion-document-text"></i>
-    </div>
-    <div class="meta">
-      <div class="title">
-        {{ title }}
-      </div>
-      <div class="link-wrap">
-        <a
-          class="download"
-          rel="noreferrer noopener nofollow"
-          target="_blank"
-          :href="url"
-        >
-          {{ $t('COMPONENTS.FILE_BUBBLE.DOWNLOAD') }}
-        </a>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script>
+import FluentIcon from 'shared/components/FluentIcon/Index.vue';
+import { getContrastingTextColor } from '@chatwoot/utils';
+
 export default {
+  components: {
+    FluentIcon,
+  },
   props: {
     url: {
       type: String,
@@ -36,6 +19,10 @@ export default {
       type: String,
       default: '',
     },
+    isUserBubble: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
     title() {
@@ -44,8 +31,15 @@ export default {
         : decodeURI(this.fileName);
     },
     fileName() {
-      const filename = this.url.substring(this.url.lastIndexOf('/') + 1);
-      return filename;
+      return this.url.substring(this.url.lastIndexOf('/') + 1);
+    },
+    contrastingTextColor() {
+      return getContrastingTextColor(this.widgetColor);
+    },
+    textColor() {
+      return this.isUserBubble && this.widgetColor
+        ? this.contrastingTextColor
+        : '';
     },
   },
   methods: {
@@ -57,44 +51,42 @@ export default {
 };
 </script>
 
+<template>
+  <div class="file flex flex-row items-center p-3 cursor-pointer">
+    <div class="icon-wrap" :style="{ color: textColor }">
+      <FluentIcon icon="document" size="28" />
+    </div>
+    <div class="ltr:pr-1 rtl:pl-1">
+      <div
+        class="m-0 font-medium text-sm"
+        :class="{ 'text-n-slate-12': !isUserBubble }"
+        :style="{ color: textColor }"
+      >
+        {{ title }}
+      </div>
+      <div class="leading-none mb-1">
+        <a
+          class="download"
+          rel="noreferrer noopener nofollow"
+          target="_blank"
+          :style="{ color: textColor }"
+          :href="url"
+        >
+          {{ $t('COMPONENTS.FILE_BUBBLE.DOWNLOAD') }}
+        </a>
+      </div>
+    </div>
+  </div>
+</template>
+
 <style lang="scss" scoped>
-@import '~widget/assets/scss/variables.scss';
-
 .file {
-  display: flex;
-  flex-direction: row;
-  padding: $space-slab;
-  cursor: pointer;
-
   .icon-wrap {
-    font-size: $font-size-mega;
-    color: $color-woot;
-    line-height: 1;
-    margin-left: $space-smaller;
-    margin-right: $space-small;
-  }
-
-  .title {
-    font-weight: $font-weight-medium;
-    font-size: $font-size-default;
-    margin: 0;
+    @apply text-[2.5rem] text-n-brand leading-none ltr:ml-1 rtl:mr-1 ltr:mr-2 rtl:ml-2;
   }
 
   .download {
-    color: $color-woot;
-    font-weight: $font-weight-medium;
-    font-size: $font-size-mini;
-    padding: 0;
-    margin: 0;
-    font-size: $font-size-small;
-    text-decoration: none;
-  }
-
-  .link-wrap {
-    line-height: 1;
-  }
-  .meta {
-    padding-right: $space-smaller;
+    @apply text-n-brand font-medium p-0 m-0 text-xs no-underline;
   }
 }
 </style>

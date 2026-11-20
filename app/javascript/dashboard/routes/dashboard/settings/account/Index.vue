@@ -1,95 +1,42 @@
-<template>
-  <div class="columns profile--settings ">
-    <form v-if="!uiFlags.isFetchingItem" @submit.prevent="updateAccount">
-      <div class="small-12 row profile--settings--row">
-        <div class="columns small-3 ">
-          <h4 class="block-title">
-            {{ $t('GENERAL_SETTINGS.FORM.GENERAL_SECTION.TITLE') }}
-          </h4>
-          <p>{{ $t('GENERAL_SETTINGS.FORM.GENERAL_SECTION.NOTE') }}</p>
-        </div>
-        <div class="columns small-9 medium-5">
-          <label :class="{ error: $v.name.$error }">
-            {{ $t('GENERAL_SETTINGS.FORM.NAME.LABEL') }}
-            <input
-              v-model="name"
-              type="text"
-              :placeholder="$t('GENERAL_SETTINGS.FORM.NAME.PLACEHOLDER')"
-              @blur="$v.name.$touch"
-            />
-            <span v-if="$v.name.$error" class="message">
-              {{ $t('GENERAL_SETTINGS.FORM.NAME.ERROR') }}
-            </span>
-          </label>
-          <label :class="{ error: $v.locale.$error }">
-            {{ $t('GENERAL_SETTINGS.FORM.LANGUAGE.LABEL') }}
-            <select v-model="locale">
-              <option
-                v-for="lang in enabledLanguages"
-                :key="lang.iso_639_1_code"
-                :value="lang.iso_639_1_code"
-              >
-                {{ lang.name }}
-              </option>
-            </select>
-            <span v-if="$v.locale.$error" class="message">
-              {{ $t('GENERAL_SETTINGS.FORM.LANGUAGE.ERROR') }}
-            </span>
-          </label>
-          <label v-if="featureInboundEmailEnabled">
-            {{ $t('GENERAL_SETTINGS.FORM.FEATURES.INBOUND_EMAIL_ENABLED') }}
-          </label>
-          <label v-if="featureCustomDomainEmailEnabled">
-            {{
-              $t('GENERAL_SETTINGS.FORM.FEATURES.CUSTOM_EMAIL_DOMAIN_ENABLED')
-            }}
-          </label>
-          <label v-if="featureCustomDomainEmailEnabled">
-            {{ $t('GENERAL_SETTINGS.FORM.DOMAIN.LABEL') }}
-            <input
-              v-model="domain"
-              type="text"
-              :placeholder="$t('GENERAL_SETTINGS.FORM.DOMAIN.PLACEHOLDER')"
-            />
-          </label>
-          <label v-if="featureCustomDomainEmailEnabled">
-            {{ $t('GENERAL_SETTINGS.FORM.SUPPORT_EMAIL.LABEL') }}
-            <input
-              v-model="supportEmail"
-              type="text"
-              :placeholder="
-                $t('GENERAL_SETTINGS.FORM.SUPPORT_EMAIL.PLACEHOLDER')
-              "
-            />
-          </label>
-        </div>
-      </div>
-      <div class="current-version">
-        {{ `v${globalConfig.appVersion}` }}
-      </div>
-
-      <woot-submit-button
-        class="button nice success button--fixed-right-top"
-        :button-text="$t('GENERAL_SETTINGS.SUBMIT')"
-        :loading="isUpdating"
-      >
-      </woot-submit-button>
-    </form>
-
-    <woot-loading-state v-if="uiFlags.isFetchingItem" />
-  </div>
-</template>
-
 <script>
-import Vue from 'vue';
-import { required } from 'vuelidate/lib/validators';
+import { useVuelidate } from '@vuelidate/core';
+import { required } from '@vuelidate/validators';
 import { mapGetters } from 'vuex';
-import alertMixin from 'shared/mixins/alertMixin';
-import configMixin from 'shared/mixins/configMixin';
-import accountMixin from '../../../../mixins/account';
+import { useAlert } from 'dashboard/composables';
+import { useUISettings } from 'dashboard/composables/useUISettings';
+import { useConfig } from 'dashboard/composables/useConfig';
+import { useAccount } from 'dashboard/composables/useAccount';
+import { FEATURE_FLAGS } from '../../../../featureFlags';
+import WithLabel from 'v3/components/Form/WithLabel.vue';
+import NextInput from 'next/input/Input.vue';
+import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
+import NextButton from 'dashboard/components-next/button/Button.vue';
+import AccountId from './components/AccountId.vue';
+import BuildInfo from './components/BuildInfo.vue';
+import AccountDelete from './components/AccountDelete.vue';
+import AudioTranscription from './components/AudioTranscription.vue';
+import SectionLayout from './components/SectionLayout.vue';
 
 export default {
-  mixins: [accountMixin, alertMixin, configMixin],
+  components: {
+    BaseSettingsHeader,
+    NextButton,
+    AccountId,
+    BuildInfo,
+    AccountDelete,
+    AudioTranscription,
+    SectionLayout,
+    WithLabel,
+    NextInput,
+  },
+  setup() {
+    const { updateUISettings, uiSettings } = useUISettings();
+    const { enabledLanguages } = useConfig();
+    const { accountId } = useAccount();
+    const v$ = useVuelidate();
+
+    return { updateUISettings, uiSettings, v$, enabledLanguages, accountId };
+  },
   data() {
     return {
       id: '',
@@ -110,49 +57,71 @@ export default {
   },
   computed: {
     ...mapGetters({
-      globalConfig: 'globalConfig/get',
       getAccount: 'accounts/getAccount',
       uiFlags: 'accounts/getUIFlags',
+      isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
+      isOnChatwootCloud: 'globalConfig/isOnChatwootCloud',
     }),
-
+    showAudioTranscriptionConfig() {
+      return this.isFeatureEnabledonAccount(
+        this.accountId,
+        FEATURE_FLAGS.CAPTAIN
+      );
+    },
+    languagesSortedByCode() {
+      const enabledLanguages = [...this.enabledLanguages];
+      return enabledLanguages.sort((l1, l2) =>
+        l1.iso_639_1_code.localeCompare(l2.iso_639_1_code)
+      );
+    },
     isUpdating() {
       return this.uiFlags.isUpdating;
     },
-
     featureInboundEmailEnabled() {
-      return !!this.features.inbound_emails;
+      return !!this.features?.inbound_emails;
     },
-
-    featureCustomDomainEmailEnabled() {
-      return this.featureInboundEmailEnabled && !!this.customEmailDomainEnabled;
+    featureCustomReplyDomainEnabled() {
+      return (
+        this.featureInboundEmailEnabled && !!this.features.custom_reply_domain
+      );
+    },
+    featureCustomReplyEmailEnabled() {
+      return (
+        this.featureInboundEmailEnabled && !!this.features.custom_reply_email
+      );
+    },
+    currentAccount() {
+      return this.getAccount(this.accountId) || {};
+    },
+  },
+  watch: {
+    'currentAccount.id'(id) {
+      if (id) {
+        this.initializeAccount();
+      }
     },
   },
   mounted() {
-    if (!this.id) {
+    // Account already in the store (navigated in): seed immediately.
+    if (this.currentAccount.id) {
       this.initializeAccount();
     }
   },
   methods: {
     async initializeAccount() {
       try {
-        await this.$store.dispatch('accounts/get');
-        const {
-          name,
-          locale,
-          id,
-          domain,
-          support_email,
-          custom_email_domain_enabled,
-          features,
-        } = this.getAccount(this.accountId);
+        const { name, locale, id, domain, support_email, features } =
+          this.getAccount(this.accountId);
 
-        Vue.config.lang = locale;
+        const effectiveLocale = this.uiSettings?.locale || locale;
+        if (effectiveLocale) {
+          this.$root.$i18n.locale = effectiveLocale;
+        }
         this.name = name;
         this.locale = locale;
         this.id = id;
         this.domain = domain;
         this.supportEmail = support_email;
-        this.customEmailDomainEnabled = custom_email_domain_enabled;
         this.features = features;
       } catch (error) {
         // Ignore error
@@ -160,9 +129,9 @@ export default {
     },
 
     async updateAccount() {
-      this.$v.$touch();
-      if (this.$v.$invalid) {
-        this.showAlert(this.$t('GENERAL_SETTINGS.FORM.ERROR'));
+      this.v$.$touch();
+      if (this.v$.$invalid) {
+        useAlert(this.$t('GENERAL_SETTINGS.FORM.ERROR'));
         return;
       }
       try {
@@ -172,39 +141,117 @@ export default {
           domain: this.domain,
           support_email: this.supportEmail,
         });
-        Vue.config.lang = this.locale;
-        this.showAlert(this.$t('GENERAL_SETTINGS.UPDATE.SUCCESS'));
+        // If user locale is set, update the locale with user locale
+        const updatedLocale = this.uiSettings?.locale || this.locale;
+        if (updatedLocale) {
+          this.$root.$i18n.locale = updatedLocale;
+        }
+        this.getAccount(this.id).locale = this.locale;
+        useAlert(this.$t('GENERAL_SETTINGS.UPDATE.SUCCESS'));
       } catch (error) {
-        this.showAlert(this.$t('GENERAL_SETTINGS.UPDATE.ERROR'));
+        useAlert(this.$t('GENERAL_SETTINGS.UPDATE.ERROR'));
       }
     },
   },
 };
 </script>
 
-<style lang="scss">
-@import '~dashboard/assets/scss/variables.scss';
-@import '~dashboard/assets/scss/mixins.scss';
+<template>
+  <div class="flex flex-col w-full max-w-2xl ltr:mr-auto rtl:ml-auto">
+    <BaseSettingsHeader :title="$t('GENERAL_SETTINGS.TITLE')" />
+    <div class="flex-grow flex-shrink min-w-0 mt-3">
+      <SectionLayout
+        :title="$t('GENERAL_SETTINGS.FORM.GENERAL_SECTION.TITLE')"
+        :description="$t('GENERAL_SETTINGS.FORM.GENERAL_SECTION.NOTE')"
+        class="!pt-0"
+      >
+        <form
+          v-if="!uiFlags.isFetchingItem"
+          class="grid gap-4"
+          @submit.prevent="updateAccount"
+        >
+          <WithLabel
+            name="account-name"
+            :has-error="v$.name.$error"
+            :label="$t('GENERAL_SETTINGS.FORM.NAME.LABEL')"
+            :error-message="$t('GENERAL_SETTINGS.FORM.NAME.ERROR')"
+          >
+            <NextInput
+              v-model="name"
+              type="text"
+              class="w-full"
+              :placeholder="$t('GENERAL_SETTINGS.FORM.NAME.PLACEHOLDER')"
+              @blur="v$.name.$touch"
+            />
+          </WithLabel>
+          <WithLabel
+            name="site-language"
+            :has-error="v$.locale.$error"
+            :label="$t('GENERAL_SETTINGS.FORM.LANGUAGE.LABEL')"
+            :error-message="$t('GENERAL_SETTINGS.FORM.LANGUAGE.ERROR')"
+          >
+            <select v-model="locale" class="!mb-0 text-sm">
+              <option
+                v-for="lang in languagesSortedByCode"
+                :key="lang.iso_639_1_code"
+                :value="lang.iso_639_1_code"
+              >
+                {{ lang.name }}
+              </option>
+            </select>
+          </WithLabel>
+          <WithLabel
+            v-if="featureCustomReplyDomainEnabled"
+            name="custom-domain"
+            :label="$t('GENERAL_SETTINGS.FORM.DOMAIN.LABEL')"
+          >
+            <NextInput
+              v-model="domain"
+              type="text"
+              class="w-full"
+              :placeholder="$t('GENERAL_SETTINGS.FORM.DOMAIN.PLACEHOLDER')"
+            />
+            <template #help>
+              {{
+                featureInboundEmailEnabled &&
+                $t('GENERAL_SETTINGS.FORM.FEATURES.INBOUND_EMAIL_ENABLED')
+              }}
 
-.profile--settings {
-  padding: 24px;
-  overflow: auto;
-}
+              {{
+                featureCustomReplyDomainEnabled &&
+                $t('GENERAL_SETTINGS.FORM.FEATURES.CUSTOM_EMAIL_DOMAIN_ENABLED')
+              }}
+            </template>
+          </WithLabel>
+          <WithLabel
+            v-if="featureCustomReplyEmailEnabled"
+            name="support-email"
+            :label="$t('GENERAL_SETTINGS.FORM.SUPPORT_EMAIL.LABEL')"
+          >
+            <NextInput
+              v-model="supportEmail"
+              type="text"
+              class="w-full"
+              :placeholder="
+                $t('GENERAL_SETTINGS.FORM.SUPPORT_EMAIL.PLACEHOLDER')
+              "
+            />
+          </WithLabel>
+          <div>
+            <NextButton blue :is-loading="isUpdating" type="submit">
+              {{ $t('GENERAL_SETTINGS.SUBMIT') }}
+            </NextButton>
+          </div>
+        </form>
+      </SectionLayout>
 
-.profile--settings--row {
-  @include border-normal-bottom;
-  padding: $space-normal;
-  .small-3 {
-    padding: $space-normal $space-medium $space-normal 0;
-  }
-  .small-9 {
-    padding: $space-normal;
-  }
-}
-
-.current-version {
-  font-size: var(--font-size-small);
-  text-align: center;
-  padding: var(--space-normal);
-}
-</style>
+      <woot-loading-state v-if="uiFlags.isFetchingItem" />
+    </div>
+    <AudioTranscription v-if="showAudioTranscriptionConfig" />
+    <AccountId />
+    <div v-if="!uiFlags.isFetchingItem && isOnChatwootCloud">
+      <AccountDelete />
+    </div>
+    <BuildInfo />
+  </div>
+</template>

@@ -7,13 +7,29 @@ RSpec.describe '/api/v1/widget/labels', type: :request do
   let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: web_widget.inbox) }
   let!(:conversation) { create(:conversation, contact: contact, account: account, inbox: web_widget.inbox, contact_inbox: contact_inbox) }
   let(:payload) { { source_id: contact_inbox.source_id, inbox_id: web_widget.inbox.id } }
-  let(:token) { ::Widget::TokenService.new(payload: payload).generate_token }
+  let(:token) { Widget::TokenService.new(payload: payload).generate_token }
 
   describe 'POST /api/v1/widget/labels' do
     let(:params) { { website_token: web_widget.website_token, label: 'customer-support' } }
 
-    context 'with correct website token' do
-      it 'returns the list of labels' do
+    context 'with correct website token and undefined label' do
+      it 'does not add the label' do
+        post '/api/v1/widget/labels',
+             params: params,
+             headers: { 'X-Auth-Token' => token },
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(conversation.reload.label_list.count).to eq 0
+      end
+    end
+
+    context 'with correct website token and a defined label' do
+      before do
+        account.labels.create!(title: 'customer-support')
+      end
+
+      it 'add the label to the conversation' do
         post '/api/v1/widget/labels',
              params: params,
              headers: { 'X-Auth-Token' => token },

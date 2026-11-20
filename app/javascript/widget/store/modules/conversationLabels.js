@@ -5,18 +5,26 @@ const state = {};
 export const getters = {};
 
 export const actions = {
-  create: async (_, label) => {
+  create: async ({ commit, rootGetters }, label) => {
+    if (!rootGetters['conversationAttributes/getConversationParams']?.id) {
+      commit('conversation/setPendingLabels', label, { root: true });
+      return;
+    }
     try {
       await conversationLabels.create(label);
     } catch (error) {
-      // Ingore error
+      // Ignore error
     }
   },
-  destroy: async (_, label) => {
+  destroy: async ({ commit, rootGetters }, label) => {
+    if (!rootGetters['conversationAttributes/getConversationParams']?.id) {
+      commit('conversation/removePendingLabel', label, { root: true });
+      return;
+    }
     try {
       await conversationLabels.destroy(label);
     } catch (error) {
-      // Ingore error
+      // Ignore error
     }
   },
 };

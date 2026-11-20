@@ -1,23 +1,46 @@
-class Api::V1::Accounts::Contacts::ConversationsController < Api::V1::Accounts::BaseController
+class Api::V1::Accounts::Contacts::ConversationsController < Api::V1::Accounts::Contacts::BaseController
+  RESULTS_PER_PAGE = 25
+
+  # Scoped to a conversation, this returns it with the ones created around it: the in-thread
+  # navigation walks the whole history and never needs more than that.
   def index
-    @conversations = Current.account.conversations.includes(
-      :assignee, :contact, :inbox
-    ).where(inbox_id: inbox_ids, contact_id: permitted_params[:contact_id])
+    @conversations = if params[:conversation_id].present?
+                       conversation_with_neighbours(params[:conversation_id])
+                     else
+                       permitted_conversations.order(last_activity_at: :desc, id: :desc).limit(RESULTS_PER_PAGE)
+                     end
   end
 
   private
 
-  def inbox_ids
-    if current_user.administrator?
-      Current.account.inboxes.pluck(:id)
-    elsif current_user.agent?
-      current_user.assigned_inboxes.pluck(:id)
-    else
-      []
-    end
+  def permitted_conversations
+    conversations = Current.account.conversations.includes(
+      :assignee, :contact, :taggings, :contact_inbox
+    ).preload(
+      inbox: :channel,
+      ai_assignee: { avatar_attachment: [:blob] }
+    ).where(contact_id: @contact.id)
+
+    Conversations::PermissionFilterService.new(
+      conversations,
+      Current.user,
+      Current.account
+    ).perform
   end
 
-  def permitted_params
-    params.permit(:contact_id)
+  def conversation_with_neighbours(display_id)
+    conversation = permitted_conversations.find_by!(display_id: display_id)
+
+    [neighbour(conversation, :older), conversation, neighbour(conversation, :newer)].compact
+  end
+
+  def neighbour(conversation, direction)
+    comparison = direction == :older ? '<' : '>'
+    order = direction == :older ? :desc : :asc
+
+    permitted_conversations
+      .where("(conversations.created_at, conversations.id) #{comparison} (?, ?)", conversation.created_at, conversation.id)
+      .order(created_at: order, id: order)
+      .first
   end
 end

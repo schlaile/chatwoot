@@ -1,140 +1,170 @@
+<script setup>
+import { computed, onUnmounted } from 'vue';
+import { useToggle } from '@vueuse/core';
+import { useStore } from 'vuex';
+import { useAlert } from 'dashboard/composables';
+import { useI18n } from 'vue-i18n';
+import { emitter } from 'shared/helpers/mitt';
+import EmailTranscriptModal from './EmailTranscriptModal.vue';
+import ResolveAction from '../../buttons/ResolveAction.vue';
+import ButtonV4 from 'dashboard/components-next/button/Button.vue';
+import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
+
+import {
+  CMD_MUTE_CONVERSATION,
+  CMD_SEND_TRANSCRIPT,
+  CMD_UNMUTE_CONVERSATION,
+} from 'dashboard/helper/commandbar/events';
+
+// No props needed as we're getting currentChat from the store directly
+const store = useStore();
+const { t } = useI18n();
+
+const [showEmailActionsModal, toggleEmailModal] = useToggle(false);
+const [showActionsDropdown, toggleDropdown] = useToggle(false);
+
+const currentChat = computed(() => store.getters.getSelectedChat);
+const autoTranslate = computed(() => store.getters.getAutoTranslate);
+
+const actionMenuItems = computed(() => {
+  const items = [];
+
+  if (!currentChat.value.muted) {
+    items.push({
+      icon: 'i-lucide-volume-off',
+      label: t('CONTACT_PANEL.MUTE_CONTACT'),
+      action: 'mute',
+      value: 'mute',
+    });
+  } else {
+    items.push({
+      icon: 'i-lucide-volume-1',
+      label: t('CONTACT_PANEL.UNMUTE_CONTACT'),
+      action: 'unmute',
+      value: 'unmute',
+    });
+  }
+
+  items.push({
+    icon: 'i-lucide-share',
+    label: t('CONTACT_PANEL.SEND_TRANSCRIPT'),
+    action: 'send_transcript',
+    value: 'send_transcript',
+  });
+
+  const { enabled, disabledInConversation, language } = autoTranslate.value;
+  if (enabled) {
+    items.push({
+      icon: 'i-lucide-languages',
+      label: disabledInConversation
+        ? t('CONVERSATION.HEADER.AUTO_TRANSLATE.TURN_ON')
+        : t('CONVERSATION.HEADER.AUTO_TRANSLATE.TURN_OFF'),
+      hint: disabledInConversation ? '' : language,
+      action: 'auto_translate',
+      value: 'auto_translate',
+    });
+  }
+
+  return items;
+});
+
+const toggleAutoTranslate = async () => {
+  const disabled = !autoTranslate.value.disabledInConversation;
+  try {
+    await store.dispatch('setConversationAutoTranslate', {
+      conversationId: currentChat.value.id,
+      disabled,
+    });
+    useAlert(
+      disabled
+        ? t('CONVERSATION.HEADER.AUTO_TRANSLATE.TURNED_OFF')
+        : t('CONVERSATION.HEADER.AUTO_TRANSLATE.TURNED_ON')
+    );
+  } catch {
+    useAlert(t('CONVERSATION.HEADER.AUTO_TRANSLATE.UPDATE_FAILED'));
+  }
+};
+
+const handleActionClick = ({ action }) => {
+  toggleDropdown(false);
+
+  if (action === 'mute') {
+    store.dispatch('muteConversation', currentChat.value.id);
+    useAlert(t('CONTACT_PANEL.MUTED_SUCCESS'));
+  } else if (action === 'unmute') {
+    store.dispatch('unmuteConversation', currentChat.value.id);
+    useAlert(t('CONTACT_PANEL.UNMUTED_SUCCESS'));
+  } else if (action === 'send_transcript') {
+    toggleEmailModal();
+  } else if (action === 'auto_translate') {
+    toggleAutoTranslate();
+  }
+};
+
+// These functions are needed for the event listeners
+const mute = () => {
+  store.dispatch('muteConversation', currentChat.value.id);
+  useAlert(t('CONTACT_PANEL.MUTED_SUCCESS'));
+};
+
+const unmute = () => {
+  store.dispatch('unmuteConversation', currentChat.value.id);
+  useAlert(t('CONTACT_PANEL.UNMUTED_SUCCESS'));
+};
+
+emitter.on(CMD_MUTE_CONVERSATION, mute);
+emitter.on(CMD_UNMUTE_CONVERSATION, unmute);
+
+const openEmailModal = () => toggleEmailModal(true);
+emitter.on(CMD_SEND_TRANSCRIPT, openEmailModal);
+
+onUnmounted(() => {
+  emitter.off(CMD_MUTE_CONVERSATION, mute);
+  emitter.off(CMD_UNMUTE_CONVERSATION, unmute);
+  emitter.off(CMD_SEND_TRANSCRIPT, openEmailModal);
+});
+</script>
+
 <template>
-  <div class="flex-container actions--container">
-    <resolve-action
+  <div class="relative flex items-center gap-2 actions--container">
+    <ResolveAction
       :conversation-id="currentChat.id"
       :status="currentChat.status"
     />
-    <woot-button
-      class="clear more--button"
-      icon="ion-android-more-vertical"
-      @click="toggleConversationActions"
-    />
     <div
-      v-if="showConversationActions"
-      v-on-clickaway="hideConversationActions"
-      class="dropdown-pane"
-      :class="{ 'dropdown-pane--open': showConversationActions }"
+      v-on-clickaway="() => toggleDropdown(false)"
+      class="relative flex items-center group"
     >
-      <button
-        v-if="!currentChat.muted"
-        class="button small clear row alert small-6 action--button"
-        @click="mute"
+      <ButtonV4
+        v-tooltip="$t('CONVERSATION.HEADER.MORE_ACTIONS')"
+        size="sm"
+        variant="ghost"
+        color="slate"
+        icon="i-lucide-more-vertical"
+        class="rounded-md group-hover:bg-n-alpha-2"
+        @click="toggleDropdown()"
+      />
+      <DropdownMenu
+        v-if="showActionsDropdown"
+        :menu-items="actionMenuItems"
+        class="mt-1 ltr:right-0 rtl:left-0 top-full"
+        @action="handleActionClick"
       >
-        <span>{{ $t('CONTACT_PANEL.MUTE_CONTACT') }}</span>
-      </button>
-      <button
-        class="button small clear row small-6 action--button"
-        @click="toggleEmailActionsModal"
-      >
-        {{ $t('CONTACT_PANEL.SEND_TRANSCRIPT') }}
-      </button>
+        <template #trailing-icon="{ item }">
+          <span
+            v-if="item.hint"
+            class="flex-shrink-0 ms-auto ps-4 text-sm text-n-slate-11"
+          >
+            {{ item.hint }}
+          </span>
+        </template>
+      </DropdownMenu>
     </div>
-    <email-transcript-modal
+    <EmailTranscriptModal
       v-if="showEmailActionsModal"
       :show="showEmailActionsModal"
       :current-chat="currentChat"
-      @cancel="toggleEmailActionsModal"
+      @cancel="toggleEmailModal"
     />
   </div>
 </template>
-<script>
-import { mapGetters } from 'vuex';
-import { mixin as clickaway } from 'vue-clickaway';
-import alertMixin from 'shared/mixins/alertMixin';
-import EmailTranscriptModal from './EmailTranscriptModal';
-import ResolveAction from '../../buttons/ResolveAction';
-
-export default {
-  components: {
-    EmailTranscriptModal,
-    ResolveAction,
-  },
-  mixins: [alertMixin, clickaway],
-  data() {
-    return {
-      showConversationActions: false,
-      showEmailActionsModal: false,
-    };
-  },
-  computed: {
-    ...mapGetters({
-      currentChat: 'getSelectedChat',
-    }),
-  },
-  methods: {
-    mute() {
-      this.$store.dispatch('muteConversation', this.currentChat.id);
-      this.showAlert(this.$t('CONTACT_PANEL.MUTED_SUCCESS'));
-      this.toggleConversationActions();
-    },
-    toggleEmailActionsModal() {
-      this.showEmailActionsModal = !this.showEmailActionsModal;
-      this.hideConversationActions();
-    },
-    toggleConversationActions() {
-      this.showConversationActions = !this.showConversationActions;
-    },
-    hideConversationActions() {
-      this.showConversationActions = false;
-    },
-  },
-};
-</script>
-<style scoped lang="scss">
-@import '~dashboard/assets/scss/mixins';
-
-.more--button {
-  align-items: center;
-  display: flex;
-  margin-left: var(--space-small);
-  padding: var(--space-small);
-
-  &.clear.more--button {
-    color: var(--color-body);
-  }
-}
-
-.actions--container {
-  position: relative;
-}
-
-.dropdown-pane {
-  @include elegant-card;
-  @include border-light;
-  right: -12px;
-  top: 48px;
-  width: auto;
-
-  &::before {
-    @include arrow(top, var(--color-border-light), 14px);
-    top: -14px;
-    position: absolute;
-    right: 6px;
-  }
-
-  &::after {
-    @include arrow(top, white, var(--space-slab));
-    top: -12px;
-    position: absolute;
-    right: var(--space-small);
-  }
-}
-
-.dropdown-pane--open {
-  display: block;
-  visibility: visible;
-}
-
-.action--button {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: var(--space-small) var(--space-smaller);
-  font-size: var(--font-size-small);
-
-  .icon {
-    margin-right: var(--space-smaller);
-    min-width: var(--space-normal);
-  }
-}
-</style>

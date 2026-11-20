@@ -1,129 +1,131 @@
-<template>
-  <div class="column content-box">
-    <div class="small-3 pull-right">
-      <multiselect
-        v-model="currentDateRangeSelection"
-        track-by="name"
-        label="name"
-        placeholder="Select one"
-        :options="dateRange"
-        :searchable="false"
-        :allow-empty="true"
-        @select="changeDateSelection"
-      />
-    </div>
-    <div class="row">
-      <woot-report-stats-card
-        v-for="(metric, index) in metrics"
-        :key="metric.NAME"
-        :desc="metric.DESC"
-        :heading="metric.NAME"
-        :index="index"
-        :on-click="changeSelection"
-        :point="accountSummary[metric.KEY]"
-        :selected="index === currentSelection"
-      />
-    </div>
-    <div class="report-bar">
-      <woot-loading-state
-        v-if="accountReport.isFetching"
-        :message="$t('REPORT.LOADING_CHART')"
-      />
-      <div v-else class="chart-container">
-        <woot-bar v-if="accountReport.data.length" :collection="collection" />
-        <span v-else class="empty-state">
-          {{ $t('REPORT.NO_ENOUGH_DATA') }}
-        </span>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script>
-import { mapGetters } from 'vuex';
-import startOfDay from 'date-fns/startOfDay';
-import subDays from 'date-fns/subDays';
-import getUnixTime from 'date-fns/getUnixTime';
-import fromUnixTime from 'date-fns/fromUnixTime';
-import format from 'date-fns/format';
+import V4Button from 'dashboard/components-next/button/Button.vue';
+import { useAlert, useTrack } from 'dashboard/composables';
+import ReportFilters from './components/ReportFilters.vue';
+import { GROUP_BY_FILTER } from './constants';
+import { REPORTS_EVENTS } from '../../../../helper/AnalyticsHelper/events';
+import { generateFileName } from 'dashboard/helper/downloadHelper';
+import ReportContainer from './ReportContainer.vue';
+import ReportHeader from './components/ReportHeader.vue';
+
+const REPORTS_KEYS = {
+  CONVERSATIONS: 'conversations_count',
+  INCOMING_MESSAGES: 'incoming_messages_count',
+  OUTGOING_MESSAGES: 'outgoing_messages_count',
+  FIRST_RESPONSE_TIME: 'avg_first_response_time',
+  RESOLUTION_TIME: 'avg_resolution_time',
+  RESOLUTION_COUNT: 'resolutions_count',
+  REPLY_TIME: 'reply_time',
+};
 
 export default {
+  name: 'ConversationReports',
+  components: {
+    ReportHeader,
+    ReportFilters,
+    ReportContainer,
+    V4Button,
+  },
   data() {
     return {
-      currentSelection: 0,
-      currentDateRangeSelection: this.$t('REPORT.DATE_RANGE')[0],
-      dateRange: this.$t('REPORT.DATE_RANGE'),
+      from: 0,
+      to: 0,
+      groupBy: GROUP_BY_FILTER[1],
+      businessHours: false,
     };
-  },
-  computed: {
-    ...mapGetters({
-      accountSummary: 'getAccountSummary',
-      accountReport: 'getAccountReports',
-    }),
-    to() {
-      return getUnixTime(startOfDay(new Date()));
-    },
-    from() {
-      const diff = this.currentDateRangeSelection.id ? 29 : 6;
-      const fromDate = subDays(new Date(), diff);
-      return getUnixTime(startOfDay(fromDate));
-    },
-    collection() {
-      if (this.accountReport.isFetching) {
-        return {};
-      }
-      if (!this.accountReport.data.length) return {};
-      const labels = this.accountReport.data.map(element =>
-        format(fromUnixTime(element.timestamp), 'dd/MMM')
-      );
-      const data = this.accountReport.data.map(element => element.value);
-      return {
-        labels,
-        datasets: [
-          {
-            label: this.metrics[this.currentSelection].NAME,
-            backgroundColor: '#1f93ff',
-            data,
-          },
-        ],
-      };
-    },
-    metrics() {
-      return this.$t('REPORT.METRICS');
-    },
-  },
-  mounted() {
-    this.fetchAllData();
   },
   methods: {
     fetchAllData() {
-      const { from, to } = this;
-      this.$store.dispatch('fetchAccountSummary', {
-        from,
-        to,
-      });
-      this.$store.dispatch('fetchAccountReport', {
-        metric: this.metrics[this.currentSelection].KEY,
-        from,
-        to,
-      });
-    },
-    changeDateSelection(selectedRange) {
-      this.currentDateRangeSelection = selectedRange;
-      this.fetchAllData();
-    },
-    changeSelection(index) {
-      this.currentSelection = index;
+      this.fetchAccountSummary();
       this.fetchChartData();
     },
+    fetchAccountSummary() {
+      try {
+        this.$store.dispatch('fetchAccountSummary', this.getRequestPayload());
+      } catch {
+        useAlert(this.$t('REPORT.SUMMARY_FETCHING_FAILED'));
+      }
+    },
     fetchChartData() {
-      const { from, to } = this;
-      this.$store.dispatch('fetchAccountReport', {
-        metric: this.metrics[this.currentSelection].KEY,
+      [
+        'CONVERSATIONS',
+        'INCOMING_MESSAGES',
+        'OUTGOING_MESSAGES',
+        'FIRST_RESPONSE_TIME',
+        'RESOLUTION_TIME',
+        'RESOLUTION_COUNT',
+        'REPLY_TIME',
+      ].forEach(async key => {
+        try {
+          await this.$store.dispatch('fetchAccountReport', {
+            metric: REPORTS_KEYS[key],
+            ...this.getRequestPayload(),
+          });
+        } catch {
+          useAlert(this.$t('REPORT.DATA_FETCHING_FAILED'));
+        }
+      });
+    },
+    getRequestPayload() {
+      const { from, to, groupBy, businessHours } = this;
+
+      return {
         from,
         to,
+        groupBy: groupBy?.period,
+        businessHours,
+      };
+    },
+    downloadConversationReports() {
+      const { from, to } = this;
+      const fileName = generateFileName({
+        type: 'conversation',
+        to,
+        businessHours: this.businessHours,
+      });
+      this.$store.dispatch('downloadConversationsSummaryReports', {
+        from,
+        to,
+        fileName,
+        businessHours: this.businessHours,
+      });
+    },
+    onFilterChange({ from, to, groupBy, businessHours }) {
+      this.from = from;
+      this.to = to;
+      this.groupBy = groupBy;
+      this.businessHours = businessHours;
+      this.fetchAllData();
+
+      useTrack(REPORTS_EVENTS.FILTER_REPORT, {
+        filterValue: { from, to, groupBy, businessHours },
+        reportType: 'conversations',
       });
     },
   },
 };
 </script>
+
+<template>
+  <ReportHeader :header-title="$t('REPORT.HEADER')">
+    <V4Button
+      :label="$t('REPORT.DOWNLOAD_CONVERSATION_REPORTS')"
+      icon="i-ph-download-simple"
+      size="sm"
+      @click="downloadConversationReports"
+    />
+  </ReportHeader>
+  <div class="flex flex-col">
+    <ReportFilters
+      :show-entity-filter="false"
+      show-group-by
+      @filter-change="onFilterChange"
+    />
+    <ReportContainer
+      :group-by="groupBy"
+      :from="from"
+      :to="to"
+      :business-hours="businessHours"
+    />
+  </div>
+</template>

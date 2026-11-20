@@ -29,13 +29,15 @@ class Twitter::SendOnTwitterService < Base::SendOnChannelService
   end
 
   def screen_name
+    return "@#{reply_to_message.inbox.name}" if reply_to_message.outgoing?
+
     "@#{reply_to_message.sender&.additional_attributes.try(:[], 'screen_name') || ''}"
   end
 
   def send_direct_message
     twitter_client.send_direct_message(
       recipient_id: contact_inbox.source_id,
-      message: message.content
+      message: message.outgoing_content
     )
   end
 
@@ -50,13 +52,13 @@ class Twitter::SendOnTwitterService < Base::SendOnChannelService
   def send_tweet_reply
     response = twitter_client.send_tweet_reply(
       reply_to_tweet_id: reply_to_message.source_id,
-      tweet: "#{screen_name} #{message.content}"
+      tweet: "#{screen_name} #{message.outgoing_content}"
     )
     if response.status == '200'
       tweet_data = response.body
       message.update!(source_id: tweet_data['id_str'])
     else
-      Rails.logger.info "TWITTER_TWEET_REPLY_ERROR #{response.body}"
+      Rails.logger.error "TWITTER_TWEET_REPLY_ERROR #{response.body}"
     end
   end
 end

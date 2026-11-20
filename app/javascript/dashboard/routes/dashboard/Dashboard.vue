@@ -1,68 +1,187 @@
-<template>
-  <div class="row app-wrapper">
-    <sidebar :route="currentRoute" :class="sidebarClassName"></sidebar>
-    <section class="app-content columns" :class="contentClassName">
-      <router-view></router-view>
-    </section>
-  </div>
-</template>
-
 <script>
-/* global bus */
-import Sidebar from '../../components/layout/Sidebar';
+import { defineAsyncComponent, ref, computed } from 'vue';
+
+import NextSidebar from 'next/sidebar/Sidebar.vue';
+import WootKeyShortcutModal from 'dashboard/components/widgets/modal/WootKeyShortcutModal.vue';
+import AddAccountModal from 'dashboard/components/app/AddAccountModal.vue';
+import UpgradePage from 'dashboard/routes/dashboard/upgrade/UpgradePage.vue';
+
+import { useUISettings } from 'dashboard/composables/useUISettings';
+import { useAccount } from 'dashboard/composables/useAccount';
+import { useRingingCallsOnLoad } from 'dashboard/composables/useRingingCallsOnLoad';
+import { useWindowSize } from '@vueuse/core';
+
+import wootConstants from 'dashboard/constants/globals';
+import { isUpgradePageBypassRoute } from 'dashboard/helper/routeHelpers';
+
+const CommandBar = defineAsyncComponent(
+  () => import('./commands/commandbar.vue')
+);
+const CommandBarV2 = defineAsyncComponent(
+  () => import('dashboard/modules/command-bar/CommandBar.vue')
+);
+
+const FloatingCallWidget = defineAsyncComponent(
+  () => import('dashboard/components-next/call/FloatingCallWidget.vue')
+);
+
+import CopilotLauncher from 'dashboard/components-next/copilot/CopilotLauncher.vue';
+import CopilotContainer from 'dashboard/components/copilot/CopilotContainer.vue';
+
+import MobileSidebarLauncher from 'dashboard/components-next/sidebar/MobileSidebarLauncher.vue';
+import { useCallsStore } from 'dashboard/stores/calls';
 
 export default {
   components: {
-    Sidebar,
+    NextSidebar,
+    CommandBar,
+    CommandBarV2,
+    WootKeyShortcutModal,
+    AddAccountModal,
+    UpgradePage,
+    CopilotLauncher,
+    CopilotContainer,
+    FloatingCallWidget,
+    MobileSidebarLauncher,
+  },
+  setup() {
+    const upgradePageRef = ref(null);
+    const { uiSettings, updateUISettings } = useUISettings();
+    const { accountId } = useAccount();
+    const { width: windowWidth } = useWindowSize();
+    const callsStore = useCallsStore();
+    useRingingCallsOnLoad();
+
+    return {
+      uiSettings,
+      updateUISettings,
+      accountId,
+      upgradePageRef,
+      windowWidth,
+      hasActiveCall: computed(() => callsStore.hasActiveCall),
+      hasIncomingCall: computed(() => callsStore.hasIncomingCall),
+    };
   },
   data() {
     return {
-      isSidebarOpen: false,
-      isOnDesktop: true,
+      showAccountModal: false,
+      showCreateAccountModal: false,
+      showShortcutModal: false,
+      isMobileSidebarOpen: false,
     };
   },
   computed: {
-    currentRoute() {
-      return ' ';
+    isSmallScreen() {
+      return this.windowWidth < wootConstants.SMALL_SCREEN_BREAKPOINT;
     },
-    sidebarClassName() {
-      if (this.isOnDesktop) {
-        return '';
-      }
-      if (this.isSidebarOpen) {
-        return 'off-canvas is-open ';
-      }
-      return 'off-canvas position-left is-transition-push is-closed';
+    showUpgradePage() {
+      return this.upgradePageRef?.shouldShowUpgradePage;
     },
-    contentClassName() {
-      if (this.isOnDesktop) {
-        return '';
-      }
-      if (this.isSidebarOpen) {
-        return 'off-canvas-content is-open-left has-transition-push has-position-left';
-      }
-      return 'off-canvas-content';
+    isAccountPaywalled() {
+      return this.upgradePageRef?.isAccountPaywalled;
+    },
+    hasCommandBarV2() {
+      return this.uiSettings.command_bar_v2 === true;
+    },
+    bypassUpgradePage() {
+      return isUpgradePageBypassRoute(this.$route.name);
+    },
+    previouslyUsedDisplayType() {
+      const {
+        previously_used_conversation_display_type: conversationDisplayType,
+      } = this.uiSettings;
+      return conversationDisplayType;
     },
   },
-  mounted() {
-    this.$store.dispatch('setCurrentAccountId', this.$route.params.accountId);
-    window.addEventListener('resize', this.handleResize);
-    this.handleResize();
-    bus.$on('sidemenu_icon_click', () => {
-      this.isSidebarOpen = !this.isSidebarOpen;
-    });
-  },
-  beforeDestroy() {
-    window.removeEventListener('resize', this.handleResize);
+  watch: {
+    isSmallScreen: {
+      handler() {
+        const { LAYOUT_TYPES } = wootConstants;
+        if (window.innerWidth <= wootConstants.SMALL_SCREEN_BREAKPOINT) {
+          this.updateUISettings({
+            conversation_display_type: LAYOUT_TYPES.EXPANDED,
+          });
+        } else {
+          this.updateUISettings({
+            conversation_display_type: this.previouslyUsedDisplayType,
+          });
+        }
+      },
+      immediate: true,
+    },
   },
   methods: {
-    handleResize() {
-      if (window.innerWidth > 1200) {
-        this.isOnDesktop = true;
-      } else {
-        this.isOnDesktop = false;
-      }
+    toggleMobileSidebar() {
+      this.isMobileSidebarOpen = !this.isMobileSidebarOpen;
+    },
+    closeMobileSidebar() {
+      this.isMobileSidebarOpen = false;
+    },
+    openCreateAccountModal() {
+      this.showAccountModal = false;
+      this.showCreateAccountModal = true;
+    },
+    closeCreateAccountModal() {
+      this.showCreateAccountModal = false;
+    },
+    toggleAccountModal() {
+      this.showAccountModal = !this.showAccountModal;
+    },
+    toggleKeyShortcutModal() {
+      this.showShortcutModal = true;
+    },
+    closeKeyShortcutModal() {
+      this.showShortcutModal = false;
     },
   },
 };
 </script>
+
+<template>
+  <div class="flex flex-grow overflow-hidden text-n-slate-12">
+    <NextSidebar
+      :is-mobile-sidebar-open="isMobileSidebarOpen"
+      @toggle-account-modal="toggleAccountModal"
+      @open-key-shortcut-modal="toggleKeyShortcutModal"
+      @close-key-shortcut-modal="closeKeyShortcutModal"
+      @show-create-account-modal="openCreateAccountModal"
+      @close-mobile-sidebar="closeMobileSidebar"
+    />
+
+    <main
+      class="relative flex flex-1 h-full w-full min-h-0 px-0 overflow-hidden bg-n-surface-1"
+    >
+      <UpgradePage
+        v-show="showUpgradePage"
+        ref="upgradePageRef"
+        :bypass-upgrade-page="bypassUpgradePage"
+      >
+        <MobileSidebarLauncher
+          :is-mobile-sidebar-open="isMobileSidebarOpen"
+          @toggle="toggleMobileSidebar"
+        />
+      </UpgradePage>
+      <template v-if="!showUpgradePage">
+        <router-view />
+        <CopilotLauncher />
+        <MobileSidebarLauncher
+          :is-mobile-sidebar-open="isMobileSidebarOpen"
+          @toggle="toggleMobileSidebar"
+        />
+        <CopilotContainer />
+        <FloatingCallWidget v-if="hasActiveCall || hasIncomingCall" />
+      </template>
+      <CommandBarV2 v-if="hasCommandBarV2" :is-paywalled="isAccountPaywalled" />
+      <CommandBar v-else :is-paywalled="isAccountPaywalled" />
+      <AddAccountModal
+        :show="showCreateAccountModal"
+        @close-account-create-modal="closeCreateAccountModal"
+      />
+      <WootKeyShortcutModal
+        v-model:show="showShortcutModal"
+        @close="closeKeyShortcutModal"
+        @clickaway="closeKeyShortcutModal"
+      />
+    </main>
+  </div>
+</template>

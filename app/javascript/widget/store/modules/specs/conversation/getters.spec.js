@@ -1,4 +1,4 @@
-import { getters } from '../../conversation';
+import { getters } from '../../conversation/getters';
 
 describe('#getters', () => {
   it('getConversation', () => {
@@ -14,6 +14,11 @@ describe('#getters', () => {
         content: 'hello',
       },
     });
+  });
+
+  it('getIsCreating', () => {
+    const state = { uiFlags: { isCreating: true } };
+    expect(getters.getIsCreating(state)).toEqual(true);
   });
 
   it('getConversationSize', () => {
@@ -428,5 +433,45 @@ describe('#getters', () => {
         },
       ]);
     });
+  });
+
+  it('getMessageCount', () => {
+    const state = {
+      conversations: {
+        1: {
+          content: 'hey, how are you?',
+        },
+      },
+    };
+    expect(getters.getMessageCount(state)).toEqual(1);
+  });
+
+  it('getLastMessage', () => {
+    const state = {
+      conversations: {
+        1: {
+          id: 1,
+          content: 'Thanks for the help',
+          created_at: 1574075964,
+          message_type: 1,
+        },
+        2: {
+          id: 2,
+          content: 'Yes, It makes sense',
+          created_at: 1574092218,
+          message_type: 1,
+        },
+        3: {
+          id: 3,
+          content: 'Yes, It makes sense',
+          created_at: 1574092218,
+          message_type: 0,
+        },
+      },
+      meta: {
+        userLastSeenAt: 1674075964,
+      },
+    };
+    expect(getters.getLastMessage(state).id).toEqual(3);
   });
 });

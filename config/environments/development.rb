@@ -34,40 +34,6 @@ Rails.application.configure do
 
   config.active_job.queue_adapter = :sidekiq
 
-  # Email related config
-  config.action_mailer.perform_caching = false
-  config.action_mailer.perform_deliveries = true
-  config.action_mailer.raise_delivery_errors = true
-  config.action_mailer.default_url_options = { host: ENV['FRONTEND_URL'] }
-
-  smtp_settings = {
-    port: ENV['SMTP_PORT'] || 25,
-    domain: ENV['SMTP_DOMAIN'] || 'localhost',
-    address: ENV['SMTP_ADDRESS'] || 'chatwoot.com'
-  }
-
-  if ENV['SMTP_AUTHENTICATION'].present?
-    smtp_settings[:user_name] = ENV['SMTP_USERNAME']
-    smtp_settings[:password] = ENV['SMTP_PASSWORD']
-    smtp_settings[:authentication] = ENV['SMTP_AUTHENTICATION']
-    smtp_settings[:enable_starttls_auto] = ENV['SMTP_ENABLE_STARTTLS_AUTO'] if ENV['SMTP_ENABLE_STARTTLS_AUTO'].present?
-  end
-
-  if ENV['LETTER_OPENER']
-    config.action_mailer.delivery_method = :letter_opener
-  else
-    config.action_mailer.delivery_method = :smtp
-    config.action_mailer.smtp_settings = smtp_settings
-  end
-
-  # Set this to appropriate ingress service for which the options are :
-  # :relay for Exim, Postfix, Qmail
-  # :mailgun for Mailgun
-  # :mandrill for Mandrill
-  # :postmark for Postmark
-  # :sendgrid for Sendgrid
-  config.action_mailbox.ingress = ENV.fetch('RAILS_INBOUND_EMAIL_SERVICE', 'relay').to_sym
-
   Rails.application.routes.default_url_options = { host: ENV['FRONTEND_URL'] }
 
   # Print deprecation notices to the Rails logger.
@@ -90,19 +56,24 @@ Rails.application.configure do
   # Raises error for missing translations.
   # config.action_view.raise_on_missing_translations = true
 
-  # Use an evented file watcher to asynchronously detect changes in source code,
-  # routes, locales, etc. This feature depends on the listen gem.
-  config.file_watcher = ActiveSupport::EventedFileUpdateChecker
-
   # Disable host check during development
   config.hosts = nil
+  
+  # GitHub Codespaces configuration
+  if ENV['CODESPACES']
+    # Allow web console access from any IP
+    config.web_console.allowed_ips = %w(0.0.0.0/0 ::/0)
+    # Allow CSRF from codespace URLs
+    config.force_ssl = false
+    config.action_controller.forgery_protection_origin_check = false
+  end
 
   # customize using the environment variables
   config.log_level = ENV.fetch('LOG_LEVEL', 'debug').to_sym
 
   # Use a different logger for distributed setups.
   # require 'syslog/logger'
-  config.logger = ActiveSupport::Logger.new(Rails.root.join('log', Rails.env + '.log'), 1, ENV.fetch('LOG_SIZE', '1024').to_i.megabytes)
+  config.logger = ActiveSupport::Logger.new(Rails.root.join('log', "#{Rails.env}.log"), 1, ENV.fetch('LOG_SIZE', '1024').to_i.megabytes)
 
   # Bullet configuration to fix the N+1 queries
   config.after_initialize do

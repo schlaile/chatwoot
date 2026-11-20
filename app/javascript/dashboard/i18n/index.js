@@ -1,63 +1,58 @@
-import ar from './locale/ar';
-import ca from './locale/ca';
-import cs from './locale/cs';
-import da from './locale/da';
-import de from './locale/de';
-import el from './locale/el';
-import en from './locale/en';
-import es from './locale/es';
-import fa from './locale/fa';
-import fi from './locale/fi';
-import fr from './locale/fr';
-import hi from './locale/hi';
-import hu from './locale/hu';
-import it from './locale/it';
-import ja from './locale/ja';
-import ko from './locale/ko';
-import ml from './locale/ml';
-import nl from './locale/nl';
-import pl from './locale/pl';
-import pt from './locale/pt';
-import pt_BR from './locale/pt_BR';
-import ro from './locale/ro';
-import ru from './locale/ru';
-import sk from './locale/sk';
-import sv from './locale/sv';
-import ta from './locale/ta';
-import tr from './locale/tr';
-import uk from './locale/uk';
-import vi from './locale/vi';
-import zh from './locale/zh';
+// One line per dashboard locale enabled in config/initializers/languages.rb.
+// A locale enabled there but missing here renders in English until its line is added.
+const localeFiles = import.meta.glob(
+  [
+    './locale/ar/*.json',
+    './locale/bg/*.json',
+    './locale/ca/*.json',
+    './locale/cs/*.json',
+    './locale/da/*.json',
+    './locale/de/*.json',
+    './locale/el/*.json',
+    './locale/en/*.json',
+    './locale/es/*.json',
+    './locale/et/*.json',
+    './locale/fa/*.json',
+    './locale/fi/*.json',
+    './locale/fr/*.json',
+    './locale/he/*.json',
+    './locale/hu/*.json',
+    './locale/id/*.json',
+    './locale/is/*.json',
+    './locale/it/*.json',
+    './locale/ja/*.json',
+    './locale/ko/*.json',
+    './locale/lt/*.json',
+    './locale/lv/*.json',
+    './locale/ml/*.json',
+    './locale/nl/*.json',
+    './locale/no/*.json',
+    './locale/pl/*.json',
+    './locale/pt/*.json',
+    './locale/pt_BR/*.json',
+    './locale/ro/*.json',
+    './locale/ru/*.json',
+    './locale/sk/*.json',
+    './locale/sl/*.json',
+    './locale/sr/*.json',
+    './locale/sv/*.json',
+    './locale/ta/*.json',
+    './locale/th/*.json',
+    './locale/tr/*.json',
+    './locale/uk/*.json',
+    './locale/uz/*.json',
+    './locale/vi/*.json',
+    './locale/zh_CN/*.json',
+    './locale/zh_TW/*.json',
+  ],
+  { eager: true, import: 'default' }
+);
 
-export default {
-  ar,
-  ca,
-  cs,
-  da,
-  de,
-  el,
-  en,
-  es,
-  fa,
-  fi,
-  fr,
-  hi,
-  hu,
-  it,
-  ja,
-  ko,
-  ml,
-  nl,
-  pl,
-  pt,
-  pt_BR,
-  ro,
-  ru,
-  sk,
-  sv,
-  ta,
-  tr,
-  uk,
-  vi,
-  zh,
-};
+const messages = {};
+
+Object.entries(localeFiles).forEach(([path, translations]) => {
+  const locale = path.split('/')[2];
+  messages[locale] = { ...messages[locale], ...translations };
+});
+
+export default messages;

@@ -2,7 +2,7 @@
 
 class AccountBuilder
   include CustomExceptions::Account
-  pattr_initialize [:account_name!, :email!, :confirmed!, :user]
+  pattr_initialize [:account_name, :email!, :confirmed, :user, :user_full_name, :user_password, :super_admin, :locale]
 
   def perform
     if @user.nil?
@@ -15,20 +15,24 @@ class AccountBuilder
     end
     [@user, @account]
   rescue StandardError => e
-    @account&.destroy
-    puts e.inspect
+    Rails.logger.debug e.inspect
     raise e
   end
 
   private
 
+  def user_full_name
+    # the empty string ensures that not-null constraint is not violated
+    @user_full_name || ''
+  end
+
+  def account_name
+    # the empty string ensures that not-null constraint is not violated
+    @account_name || ''
+  end
+
   def validate_email
-    address = ValidEmail2::Address.new(@email)
-    if address.valid? # && !address.disposable?
-      true
-    else
-      raise InvalidEmail.new(valid: address.valid?) # , disposable: address.disposable?})
-    end
+    Account::SignUpEmailValidationService.new(@email).perform
   end
 
   def validate_user
@@ -40,7 +44,11 @@ class AccountBuilder
   end
 
   def create_account
-    @account = Account.create!(name: @account_name)
+    @account = Account.create!(
+      name: account_name,
+      locale: I18n.locale,
+      custom_attributes: { 'onboarding_step' => 'account_details' }
+    )
     Current.account = @account
   end
 
@@ -61,18 +69,18 @@ class AccountBuilder
     )
   end
 
-  def email_to_name(email)
-    name = email[/[^@]+/]
-    name.split('.').map(&:capitalize).join(' ')
+  def create_user
+    @user = build_user
+    @user.save!
   end
 
-  def create_user
-    password = Time.now.to_i
+  def build_user
     @user = User.new(email: @email,
-                     password: password,
-                     password_confirmation: password,
-                     name: email_to_name(@email))
+                     password: user_password,
+                     password_confirmation: user_password,
+                     name: user_full_name)
+    @user.type = 'SuperAdmin' if @super_admin
     @user.confirm if @confirmed
-    @user.save!
+    @user
   end
 end

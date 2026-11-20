@@ -1,30 +1,60 @@
 class Api::V1::Accounts::InboxMembersController < Api::V1::Accounts::BaseController
-  before_action :fetch_inbox, only: [:create, :show]
-  before_action :current_agents_ids, only: [:create]
-
-  def create
-    # update also done via same action
-    update_agents_list
-    head :ok
-  rescue StandardError => e
-    Rails.logger.debug "Rescued: #{e.inspect}"
-    render_could_not_create_error('Could not add agents to inbox')
-  end
+  before_action :fetch_inbox
+  before_action :current_agents_ids, only: [:create, :update]
 
   def show
-    @agents = Current.account.users.where(id: @inbox.members.select(:user_id))
+    authorize @inbox, :show?
+    fetch_updated_agents
+  end
+
+  def create
+    authorize @inbox, :create?
+    return render_could_not_create_error('Invalid User IDs') unless valid_member_ids?
+
+    ActiveRecord::Base.transaction do
+      @inbox.add_members(agents_to_be_added_ids)
+    end
+    fetch_updated_agents
+  end
+
+  def update
+    authorize @inbox, :update?
+    return render_could_not_create_error('Invalid User IDs') unless valid_member_ids?
+
+    update_agents_list
+    fetch_updated_agents
+  end
+
+  def destroy
+    authorize @inbox, :destroy?
+    ActiveRecord::Base.transaction do
+      @inbox.remove_members(params[:user_ids])
+    end
+    head :ok
   end
 
   private
+
+  def valid_member_ids?
+    user_ids = params[:user_ids]
+    return false unless user_ids.is_a?(Array) && user_ids.all?(Integer)
+
+    (user_ids - Current.account.users.where(id: user_ids).pluck(:id)).empty?
+  end
+
+  def fetch_updated_agents
+    @agents = Current.account.users.where(id: @inbox.members.select(:user_id))
+  end
 
   def update_agents_list
     # get all the user_ids which the inbox currently has as members.
     # get the list of  user_ids from params
     # the missing ones are the agents which are to be deleted from the inbox
     # the new ones are the agents which are to be added to the inbox
-
-    agents_to_be_added_ids.each { |user_id| @inbox.add_member(user_id) }
-    agents_to_be_removed_ids.each { |user_id| @inbox.remove_member(user_id) }
+    ActiveRecord::Base.transaction do
+      @inbox.add_members(agents_to_be_added_ids)
+      @inbox.remove_members(agents_to_be_removed_ids)
+    end
   end
 
   def agents_to_be_added_ids

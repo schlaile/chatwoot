@@ -1,32 +1,30 @@
-<template>
-  <modal :show.sync="show" :on-close="onClose">
-    <woot-modal-header :header-title="title" :header-content="message" />
-    <div class="modal-footer delete-item">
-      <button class="alert button nice" @click="onConfirm">
-        {{ confirmText }}
-      </button>
-      <button class="button clear" @click="onClose">
-        {{ rejectText }}
-      </button>
-    </div>
-  </modal>
-</template>
+<script setup>
+import Modal from '../../Modal.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 
-<script>
-import Modal from '../../Modal';
+defineProps({
+  onClose: { type: Function, default: () => {} },
+  onConfirm: { type: Function, default: () => {} },
+  title: { type: String, default: '' },
+  message: { type: String, default: '' },
+  messageValue: { type: String, default: '' },
+  confirmText: { type: String, default: '' },
+  rejectText: { type: String, default: '' },
+});
 
-export default {
-  components: {
-    Modal,
-  },
-  props: {
-    show: Boolean,
-    onClose: Function,
-    onConfirm: Function,
-    title: String,
-    message: String,
-    confirmText: String,
-    rejectText: String,
-  },
-};
+const show = defineModel('show', { type: Boolean, default: false });
 </script>
+
+<template>
+  <Modal v-model:show="show" :on-close="onClose">
+    <woot-modal-header
+      :header-title="title"
+      :header-content="message"
+      :header-content-value="messageValue"
+    />
+    <div class="flex items-center justify-end gap-2 p-8">
+      <Button faded slate type="reset" :label="rejectText" @click="onClose" />
+      <Button ruby type="submit" :label="confirmText" @click="onConfirm" />
+    </div>
+  </Modal>
+</template>

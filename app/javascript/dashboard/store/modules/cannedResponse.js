@@ -1,3 +1,4 @@
+import { throwErrorMessage } from 'dashboard/store/utils/api';
 import * as MutationHelpers from 'shared/helpers/vuex/mutationHelpers';
 import * as types from '../mutation-types';
 import CannedResponseAPI from '../../api/cannedResponse';
@@ -17,19 +18,41 @@ const getters = {
   getCannedResponses(_state) {
     return _state.records;
   },
+  getSortedCannedResponses(_state) {
+    return sortOrder =>
+      [..._state.records].sort((a, b) => {
+        if (sortOrder === 'asc') {
+          return a.short_code.localeCompare(b.short_code);
+        }
+        return b.short_code.localeCompare(a.short_code);
+      });
+  },
   getUIFlags(_state) {
     return _state.uiFlags;
   },
 };
 
 const actions = {
-  getCannedResponse: async function getCannedResponse(
+  revalidateCannedResponses: async function revalidateCannedResponses(
     { commit },
-    { searchKey } = {}
+    { newKey }
   ) {
+    try {
+      const isExistingKeyValid =
+        await CannedResponseAPI.validateCacheKey(newKey);
+      if (!isExistingKeyValid) {
+        const response = await CannedResponseAPI.refetchAndCommit(newKey);
+        commit(types.default.SET_CANNED, response.data);
+      }
+    } catch (error) {
+      // Ignore error
+    }
+  },
+
+  getCannedResponse: async function getCannedResponse({ commit }) {
     commit(types.default.SET_CANNED_UI_FLAG, { fetchingList: true });
     try {
-      const response = await CannedResponseAPI.get({ searchKey });
+      const response = await CannedResponseAPI.get(true);
       commit(types.default.SET_CANNED, response.data);
       commit(types.default.SET_CANNED_UI_FLAG, { fetchingList: false });
     } catch (error) {
@@ -46,8 +69,10 @@ const actions = {
       const response = await CannedResponseAPI.create(cannedObj);
       commit(types.default.ADD_CANNED, response.data);
       commit(types.default.SET_CANNED_UI_FLAG, { creatingItem: false });
+      return response.data;
     } catch (error) {
       commit(types.default.SET_CANNED_UI_FLAG, { creatingItem: false });
+      return throwErrorMessage(error);
     }
   },
 
@@ -60,8 +85,10 @@ const actions = {
       const response = await CannedResponseAPI.update(id, updateObj);
       commit(types.default.EDIT_CANNED, response.data);
       commit(types.default.SET_CANNED_UI_FLAG, { updatingItem: false });
+      return response.data;
     } catch (error) {
       commit(types.default.SET_CANNED_UI_FLAG, { updatingItem: false });
+      return throwErrorMessage(error);
     }
   },
 
@@ -71,8 +98,10 @@ const actions = {
       await CannedResponseAPI.delete(id);
       commit(types.default.DELETE_CANNED, id);
       commit(types.default.SET_CANNED_UI_FLAG, { deletingItem: true });
+      return id;
     } catch (error) {
       commit(types.default.SET_CANNED_UI_FLAG, { deletingItem: true });
+      return throwErrorMessage(error);
     }
   },
 };

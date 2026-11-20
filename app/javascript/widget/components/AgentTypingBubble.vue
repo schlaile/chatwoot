@@ -1,12 +1,21 @@
+<script>
+export default {
+  name: 'AgentTypingBubble',
+};
+</script>
+
 <template>
-  <div class="agent-message-wrap">
+  <div class="agent-message-wrap sticky bottom-1">
     <div class="agent-message">
-      <div class="avatar-wrap"></div>
-      <div class="message-wrap">
-        <div class="typing-bubble chat-bubble agent">
+      <div class="avatar-wrap" />
+      <div class="message-wrap mt-2">
+        <div
+          class="chat-bubble agent typing-bubble bg-n-background dark:bg-n-solid-3"
+        >
           <img
-            src="~widget/assets/images/typing.gif"
+            src="assets/images/typing.gif"
             alt="Agent is typing a message"
+            class="!w-full"
           />
         </div>
       </div>
@@ -14,24 +23,8 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'AgentTypingBubble',
-};
-</script>
-
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang="scss" scoped>
-@import '~widget/assets/scss/variables.scss';
-
 .typing-bubble {
-  max-width: $space-medium;
-  padding: $space-smaller $space-small;
-  border-bottom-left-radius: $space-two;
-  border-top-left-radius: $space-small;
-
-  img {
-    width: 100%;
-  }
+  @apply max-w-[2.4rem] p-2 ltr:rounded-bl-[1.25rem] rtl:rounded-br-[1.25rem] ltr:rounded-tl-lg rtl:rounded-tr-lg;
 }
 </style>

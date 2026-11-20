@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-describe ::MessageFinder do
+describe MessageFinder do
   subject(:message_finder) { described_class.new(conversation, params) }
 
   let!(:account) { create(:account) }
@@ -45,6 +45,70 @@ describe ::MessageFinder do
       it 'filter conversations by status' do
         result = message_finder.perform
         expect(result.count).to be 6
+      end
+    end
+
+    context 'with a before attribute above the message id range' do
+      let!(:max_id_message) do
+        create(:message, id: described_class::MESSAGE_ID_MAX, account: account, inbox: inbox, conversation: conversation)
+      end
+      let(:params) { { before: 4_611_686_018_427_387_903 } }
+
+      it 'includes the maximum valid message id without overflowing the database column' do
+        expect(message_finder.perform).to include(max_id_message)
+      end
+    end
+
+    context 'with after attribute' do
+      let(:params) { { after: conversation.messages.first.id } }
+
+      it 'filter conversations by status' do
+        result = message_finder.perform
+        expect(result.count).to be 5
+        expect(result.first.id).to be conversation.messages.second.id
+        expect(result.last.message_type).to eq 'outgoing'
+      end
+    end
+
+    context 'with an after attribute above the message id range' do
+      let(:params) { { after: 881_965_304_328 } }
+
+      it 'returns no messages without overflowing the database column' do
+        expect(message_finder.perform).to be_empty
+      end
+    end
+
+    context 'with after and before attribute' do
+      let(:params) do
+        {
+          after: conversation.messages.first.id,
+          before: conversation.messages.last.id
+        }
+      end
+
+      it 'filter conversations by status' do
+        result = message_finder.perform
+        expect(result.count).to be 5
+        expect(result.last.id).to be conversation.messages[-2].id
+      end
+    end
+
+    context 'with after and before attributes above the message id range' do
+      let!(:max_id_message) do
+        create(:message, id: described_class::MESSAGE_ID_MAX, account: account, inbox: inbox, conversation: conversation)
+      end
+      let(:params) do
+        {
+          after: 881_965_304_328,
+          before: 4_611_686_018_427_387_903
+        }
+      end
+
+      it 'returns no messages' do
+        result = message_finder.perform
+
+        expect(result).to be_empty
+        expect(result).not_to include(max_id_message)
       end
     end
   end

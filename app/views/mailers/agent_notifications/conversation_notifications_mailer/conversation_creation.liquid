@@ -1,8 +1,30 @@
-<p>Hi {{user.available_name}}</p>
-
-
-<p>Time to save the world. A new conversation has been created in {{ inbox.name }}</p>
+<p>{{ agent_notification.greeting }}</p>
 
 <p>
-Click <a href="{{ action_url }}">here</a> to get cracking.
+  {{ agent_notification.conversation_creation_before_id }} (<a href="{{ action_url }}">#{{conversation.display_id}}</a>) {{ agent_notification.conversation_creation_after_id }}
+  <strong>{{ conversation.contact_name }}</strong> {{ agent_notification.wrote }}
 </p>
+
+{% for chat_message in conversation.recent_messages %}
+  <div>
+    <h4 style="margin: 0;">
+      {% if chat_message.sender == user.available_name %}
+        {{ agent_notification.you }}
+      {% else %}
+        {{chat_message.sender}}
+      {% endif %}
+    </h4>
+  </div>
+
+  <div style="padding: 10px 20px; margin: 5px 0 20px 0; background: #F2F3F7; border-radius: 10px; display: inline-block; font-family: 'Helvetica Neue',Tahoma,Arial,sans-serif; text-align: start; unicode-bidi: plaintext;">
+    {% if chat_message.content %}
+      {{chat_message.content}}
+    {% endif %}
+
+    {% if chat_message.attachments %}
+      {% for attachment in chat_message.attachments %}
+        {{ agent_notification.attachment }} [<a href="{{ attachment }}" _target="blank">{{ agent_notification.view_attachment }}</a>]
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endfor %}

@@ -1,55 +1,38 @@
+<script setup>
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import SettingsHeader from './SettingsHeader.vue';
+const props = defineProps({
+  headerTitle: { type: String, default: '' },
+  icon: { type: String, default: '' },
+  keepAlive: { type: Boolean, default: true },
+  showBackButton: { type: Boolean, default: false },
+  backUrl: { type: [String, Object], default: '' },
+});
+
+const { t } = useI18n();
+
+const showSettingsHeader = computed(
+  () => props.headerTitle || props.icon || props.showBackButton
+);
+</script>
+
 <template>
-  <div class="view-box columns bg-light">
-    <settings-header
-      button-route="new"
+  <div class="flex flex-col h-full m-0 bg-n-surface-1 w-full">
+    <SettingsHeader
+      v-if="showSettingsHeader"
       :icon="icon"
-      :header-title="$t(headerTitle)"
-      :button-text="$t(headerButtonText)"
+      :header-title="t(headerTitle)"
       :show-back-button="showBackButton"
       :back-url="backUrl"
-      :show-new-button="showNewButton"
+      class="z-20 max-w-7xl w-full mx-auto"
     />
-    <keep-alive>
-      <router-view></router-view>
-    </keep-alive>
+
+    <router-view v-slot="{ Component }" class="px-4 overflow-hidden">
+      <component :is="Component" v-if="!keepAlive" :key="$route.fullPath" />
+      <keep-alive v-else>
+        <component :is="Component" :key="$route.fullPath" />
+      </keep-alive>
+    </router-view>
   </div>
 </template>
-
-<script>
-/* eslint no-console: 0 */
-import SettingsHeader from './SettingsHeader';
-
-export default {
-  components: {
-    SettingsHeader,
-  },
-  props: {
-    headerTitle: String,
-    headerButtonText: String,
-    icon: String,
-    newButtonRoutes: {
-      type: Array,
-      default: () => [],
-    },
-    showBackButton: {
-      type: Boolean,
-      default: false,
-    },
-    backUrl: {
-      type: [String, Object],
-      default: '',
-    },
-  },
-  data() {
-    return {};
-  },
-  computed: {
-    currentPage() {
-      return this.$store.state.route.name;
-    },
-    showNewButton() {
-      return this.newButtonRoutes.length !== 0 && !this.showBackButton;
-    },
-  },
-};
-</script>

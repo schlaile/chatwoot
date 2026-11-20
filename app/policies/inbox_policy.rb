@@ -11,16 +11,35 @@ class InboxPolicy < ApplicationPolicy
     end
 
     def resolve
-      if @account_user.administrator?
-        scope.all
-      elsif @account_user.agent?
-        user.assigned_inboxes
-      end
+      user.assigned_inboxes
     end
   end
 
   def index?
     true
+  end
+
+  def show?
+    # FIXME: for agent bots, lets bring this validation to policies as well in future
+    return true if @user.is_a?(AgentBot)
+
+    Current.user.assigned_inboxes.include? record
+  end
+
+  def assignable_agents?
+    true
+  end
+
+  def agent_bot?
+    true
+  end
+
+  def message_templates?
+    true
+  end
+
+  def campaigns?
+    @account_user.administrator?
   end
 
   def create?
@@ -36,6 +55,46 @@ class InboxPolicy < ApplicationPolicy
   end
 
   def set_agent_bot?
+    @account_user.administrator?
+  end
+
+  def avatar?
+    @account_user.administrator?
+  end
+
+  def sync_templates?
+    @account_user.administrator?
+  end
+
+  def whatsapp_business_management_token?
+    @account_user.administrator?
+  end
+
+  def health?
+    @account_user.administrator?
+  end
+
+  def reset_secret?
+    @account_user.administrator?
+  end
+
+  def rotate_hmac_token?
+    @account_user.administrator?
+  end
+
+  def enable_whatsapp_calling?
+    @account_user.administrator?
+  end
+
+  def disable_whatsapp_calling?
+    @account_user.administrator?
+  end
+
+  def set_inbound_calls?
+    @account_user.administrator?
+  end
+
+  def set_call_recording?
     @account_user.administrator?
   end
 end

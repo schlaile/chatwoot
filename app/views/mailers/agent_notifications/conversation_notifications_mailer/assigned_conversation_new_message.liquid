@@ -1,7 +1,7 @@
-<p>Hi {{user.available_name}},</p>
+<p>{{ agent_notification.greeting }}</p>
 
-<p>You have received a new message in your assigned conversation.</p>
+<p>{{ agent_notification.assigned_new_message }}</p>
 
 <p>
-Click <a href="{{action_url}}">here</a> to get cracking.
+<a href="{{action_url}}">{{ agent_notification.open_conversation }}</a>
 </p>

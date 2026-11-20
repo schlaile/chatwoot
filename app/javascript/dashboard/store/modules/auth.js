@@ -1,27 +1,21 @@
-/* eslint no-param-reassign: 0 */
-import axios from 'axios';
-import Vue from 'vue';
-import * as types from '../mutation-types';
+import types from '../mutation-types';
 import authAPI from '../../api/auth';
-import createAxios from '../../helper/APIHelper';
-import actionCable from '../../helper/actionCable';
-import { setUser, getHeaderExpiry, clearCookiesOnLogout } from '../utils/api';
 
-const state = {
+import { setUser, clearCookiesOnLogout } from '../utils/api';
+import SessionStorage from 'shared/helpers/sessionStorage';
+import { SESSION_STORAGE_KEYS } from 'dashboard/constants/sessionStorage';
+
+const initialState = {
   currentUser: {
     id: null,
     account_id: null,
-    channel: null,
+    accounts: [],
     email: null,
     name: null,
-    provider: null,
-    uid: null,
-    subscription: {
-      state: null,
-      expiry: null,
-    },
   },
-  currentAccountId: null,
+  uiFlags: {
+    isFetching: true,
+  },
 };
 
 // getters
@@ -30,118 +24,343 @@ export const getters = {
     return !!$state.currentUser.id;
   },
 
-  getCurrentUserID(_state) {
-    return _state.currentUser.id;
+  getCurrentUserID($state) {
+    return $state.currentUser.id;
   },
 
-  getCurrentUserAvailabilityStatus(_state) {
-    return _state.currentUser.availability_status;
+  getUISettings($state) {
+    return $state.currentUser.ui_settings || {};
   },
 
-  getCurrentAccountId(_state) {
-    return _state.currentAccountId;
+  getAuthUIFlags($state) {
+    return $state.uiFlags;
   },
 
-  getCurrentRole(_state) {
-    const { accounts = [] } = _state.currentUser;
+  getCurrentUserAvailability($state, $getters) {
+    const { accounts = [] } = $state.currentUser;
     const [currentAccount = {}] = accounts.filter(
-      account => account.id === _state.currentAccountId
+      account => account.id === $getters.getCurrentAccountId
+    );
+    return currentAccount.availability;
+  },
+
+  getCurrentUserAutoOffline($state, $getters) {
+    const { accounts = [] } = $state.currentUser;
+    const [currentAccount = {}] = accounts.filter(
+      account => account.id === $getters.getCurrentAccountId
+    );
+    return currentAccount.auto_offline;
+  },
+
+  getCurrentUserAcceptsConversations(_, $getters) {
+    return $getters.getCurrentAccount.accepts_conversations;
+  },
+
+  getCurrentUserAcceptsCalls(_, $getters) {
+    return $getters.getCurrentAccount.accepts_calls;
+  },
+
+  getCurrentUserReceivesCalls($state, $getters) {
+    return (
+      $getters.getCurrentUserAvailability === 'online' &&
+      $getters.getCurrentUserAcceptsCalls
+    );
+  },
+
+  getCurrentAccountId(_, __, rootState) {
+    if (rootState.route.params && rootState.route.params.accountId) {
+      return Number(rootState.route.params.accountId);
+    }
+    return null;
+  },
+
+  getCurrentRole($state, $getters) {
+    const { accounts = [] } = $state.currentUser;
+    const [currentAccount = {}] = accounts.filter(
+      account => account.id === $getters.getCurrentAccountId
     );
     return currentAccount.role;
   },
 
-  getCurrentUser(_state) {
-    return _state.currentUser;
+  getCurrentCustomRoleId($state, $getters) {
+    const { accounts = [] } = $state.currentUser;
+    const [currentAccount = {}] = accounts.filter(
+      account => account.id === $getters.getCurrentAccountId
+    );
+    return currentAccount.custom_role_id;
+  },
+
+  getCurrentUser($state) {
+    return $state.currentUser;
+  },
+
+  getMessageSignature($state) {
+    const { message_signature: messageSignature } = $state.currentUser;
+
+    return messageSignature || '';
+  },
+
+  getCurrentAccount($state, $getters) {
+    const { accounts = [] } = $state.currentUser;
+    const [currentAccount = {}] = accounts.filter(
+      account => account.id === $getters.getCurrentAccountId
+    );
+    return currentAccount || {};
+  },
+
+  getUserAccounts($state) {
+    const { accounts = [] } = $state.currentUser;
+    return accounts;
   },
 };
 
 // actions
 export const actions = {
-  login({ commit }, credentials) {
-    return new Promise((resolve, reject) => {
-      authAPI
-        .login(credentials)
-        .then(() => {
-          commit(types.default.SET_CURRENT_USER);
-          window.axios = createAxios(axios);
-          actionCable.init(Vue);
-          window.location = '/';
-          resolve();
-        })
-        .catch(error => {
-          reject(error);
-        });
-    });
-  },
   async validityCheck(context) {
     try {
       const response = await authAPI.validityCheck();
-      setUser(response.data.payload.data, getHeaderExpiry(response));
-      context.commit(types.default.SET_CURRENT_USER);
+      const currentUser = response.data.payload.data;
+      setUser(currentUser);
+      context.commit(types.SET_CURRENT_USER, currentUser);
     } catch (error) {
-      if (error.response.status === 401) {
+      if (error?.response?.status === 401) {
         clearCookiesOnLogout();
       }
     }
   },
-  setUser({ commit, dispatch }) {
-    if (authAPI.isLoggedIn()) {
-      commit(types.default.SET_CURRENT_USER);
-      dispatch('validityCheck');
+  async setUser({ commit, dispatch }) {
+    if (authAPI.hasAuthCookie()) {
+      await dispatch('validityCheck');
     } else {
-      commit(types.default.CLEAR_USER);
+      commit(types.CLEAR_USER);
     }
+    commit(types.SET_CURRENT_USER_UI_FLAGS, { isFetching: false });
   },
   logout({ commit }) {
-    commit(types.default.CLEAR_USER);
+    commit(types.CLEAR_USER);
   },
+
   updateProfile: async ({ commit }, params) => {
+    // eslint-disable-next-line no-useless-catch
     try {
       const response = await authAPI.profileUpdate(params);
-      setUser(response.data, getHeaderExpiry(response));
-      commit(types.default.SET_CURRENT_USER);
+      commit(types.SET_CURRENT_USER, response.data);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updatePassword: async ({ commit }, params) => {
+    // eslint-disable-next-line no-useless-catch
+    try {
+      const response = await authAPI.profilePasswordUpdate(params);
+      commit(types.SET_CURRENT_USER, response.data);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteAvatar: async ({ commit }) => {
+    try {
+      const response = await authAPI.deleteAvatar();
+      commit(types.SET_CURRENT_USER, response.data);
     } catch (error) {
       // Ignore error
     }
   },
 
-  setCurrentAccountId({ commit }, accountId) {
-    commit(types.default.SET_CURRENT_ACCOUNT_ID, accountId);
+  updateUISettings: async ({ commit }, params) => {
+    try {
+      commit(types.SET_CURRENT_USER_UI_SETTINGS, params);
+
+      const isImpersonating = SessionStorage.get(
+        SESSION_STORAGE_KEYS.IMPERSONATION_USER
+      );
+
+      if (!isImpersonating) {
+        const response = await authAPI.updateUISettings(params);
+        commit(types.SET_CURRENT_USER, response.data);
+      }
+    } catch (error) {
+      // Ignore error
+    }
   },
 
-  setCurrentUserAvailabilityStatus({ commit, state: $state }, data) {
-    if (data[$state.currentUser.id]) {
-      commit(
-        types.default.SET_CURRENT_USER_AVAILABILITY,
-        data[$state.currentUser.id]
+  updateAvailability: async (
+    { commit, dispatch, getters: _getters },
+    params
+  ) => {
+    const previousStatus = _getters.getCurrentUserAvailability;
+
+    try {
+      // optimisticly update current status
+      commit(types.SET_CURRENT_USER_AVAILABILITY, params.availability);
+      const response = await authAPI.updateAvailability(params);
+      const userData = response.data;
+      const { id } = userData;
+      commit(types.SET_CURRENT_USER, response.data);
+      dispatch('agents/updateSingleAgentPresence', {
+        id,
+        availabilityStatus: params.availability,
+      });
+    } catch (error) {
+      // revert back to previous status if update fails
+      commit(types.SET_CURRENT_USER_AVAILABILITY, previousStatus);
+    }
+  },
+
+  updateAutoOffline: async (
+    { commit, getters: _getters },
+    { accountId, autoOffline }
+  ) => {
+    const previousAutoOffline = _getters.getCurrentUserAutoOffline;
+
+    try {
+      commit(types.SET_CURRENT_USER_AUTO_OFFLINE, autoOffline);
+      const response = await authAPI.updateAutoOffline(accountId, autoOffline);
+      commit(types.SET_CURRENT_USER, response.data);
+    } catch (error) {
+      commit(types.SET_CURRENT_USER_AUTO_OFFLINE, previousAutoOffline);
+    }
+  },
+
+  updateWorkPreferences: async (
+    { commit, getters: _getters },
+    { accountId, ...preferences }
+  ) => {
+    const previousPreferences = {
+      accepts_conversations: _getters.getCurrentUserAcceptsConversations,
+      accepts_calls: _getters.getCurrentUserAcceptsCalls,
+    };
+
+    try {
+      commit(types.SET_CURRENT_USER_WORK_PREFERENCES, preferences);
+      const response = await authAPI.updateWorkPreferences(
+        accountId,
+        preferences
       );
+      commit(types.SET_CURRENT_USER, response.data);
+    } catch (error) {
+      commit(types.SET_CURRENT_USER_WORK_PREFERENCES, previousPreferences);
+    }
+  },
+
+  setCurrentUserAvailability({ commit, state: $state }, data) {
+    if (data[$state.currentUser.id]) {
+      commit(types.SET_CURRENT_USER_AVAILABILITY, data[$state.currentUser.id]);
+    }
+  },
+
+  setCurrentUserWorkPreferences({ commit }, preferences) {
+    if (preferences) {
+      commit(types.SET_CURRENT_USER_WORK_PREFERENCES, preferences);
+    }
+  },
+
+  setActiveAccount: async (_, { accountId }) => {
+    try {
+      await authAPI.setActiveAccount({ accountId });
+    } catch (error) {
+      // Ignore error
+    }
+  },
+
+  resetAccessToken: async ({ commit }) => {
+    try {
+      const response = await authAPI.resetAccessToken();
+      commit(types.SET_CURRENT_USER, response.data);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  resendConfirmation: async () => {
+    try {
+      await authAPI.resendConfirmation();
+    } catch (error) {
+      // Ignore error
     }
   },
 };
 
 // mutations
-const mutations = {
-  [types.default.SET_CURRENT_USER_AVAILABILITY](_state, status) {
-    Vue.set(_state.currentUser, 'availability_status', status);
-  },
-  [types.default.CLEAR_USER](_state) {
-    _state.currentUser.id = null;
-  },
-  [types.default.SET_CURRENT_USER](_state) {
-    const currentUser = {
-      ...authAPI.getAuthData(),
-      ...authAPI.getCurrentUser(),
+export const mutations = {
+  [types.SET_CURRENT_USER_AVAILABILITY](_state, availability) {
+    const accounts = _state.currentUser.accounts.map(account => {
+      if (account.id === _state.currentUser.account_id) {
+        return { ...account, availability, availability_status: availability };
+      }
+      return account;
+    });
+    _state.currentUser = {
+      ..._state.currentUser,
+      accounts,
     };
-
-    Vue.set(_state, 'currentUser', currentUser);
   },
-  [types.default.SET_CURRENT_ACCOUNT_ID](_state, accountId) {
-    Vue.set(_state, 'currentAccountId', Number(accountId));
+  [types.SET_CURRENT_USER_AUTO_OFFLINE](_state, autoOffline) {
+    const accounts = _state.currentUser.accounts.map(account => {
+      if (account.id === _state.currentUser.account_id) {
+        return { ...account, autoOffline: autoOffline };
+      }
+      return account;
+    });
+
+    _state.currentUser = {
+      ..._state.currentUser,
+      accounts,
+    };
+  },
+  [types.SET_CURRENT_USER_WORK_PREFERENCES](_state, preferences) {
+    const accounts = _state.currentUser.accounts.map(account => {
+      if (account.id === _state.currentUser.account_id) {
+        return { ...account, ...preferences };
+      }
+      return account;
+    });
+
+    _state.currentUser = {
+      ..._state.currentUser,
+      accounts,
+    };
+  },
+  [types.RESET_ONBOARDING](_state, accountId) {
+    const accounts = _state.currentUser.accounts.map(account => {
+      if (account.id === accountId) {
+        const { onboarding_step, ...rest } = account;
+        return rest;
+      }
+      return account;
+    });
+
+    _state.currentUser = {
+      ..._state.currentUser,
+      accounts,
+    };
+  },
+  [types.CLEAR_USER](_state) {
+    _state.currentUser = initialState.currentUser;
+  },
+  [types.SET_CURRENT_USER](_state, currentUser) {
+    _state.currentUser = currentUser;
+  },
+  [types.SET_CURRENT_USER_UI_SETTINGS](_state, { uiSettings }) {
+    _state.currentUser = {
+      ..._state.currentUser,
+      ui_settings: {
+        ..._state.currentUser.ui_settings,
+        ...uiSettings,
+      },
+    };
+  },
+
+  [types.SET_CURRENT_USER_UI_FLAGS](_state, { isFetching }) {
+    _state.uiFlags = { isFetching };
   },
 };
 
 export default {
-  state,
+  state: initialState,
   getters,
   actions,
   mutations,

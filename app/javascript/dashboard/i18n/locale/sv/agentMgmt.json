@@ -1,19 +1,15 @@
 {
   "AGENT_MGMT": {
     "HEADER": "Agenter",
-    "HEADER_BTN_TXT": "Lägg till agentur",
+    "HEADER_BTN_TXT": "Lägg till agent",
     "LOADING": "Hämtar agentlista",
-    "SIDEBAR_TXT": "<p><b>Agents</b></p> <p> An <b>Agent</b> is a member of your Customer Support team. </p><p> Agents will be able to view and reply to messages from your users. The list shows all agents currently in your account. </p><p> Click on <b>Add Agent</b> to add a new agent. Agent you add will receive an email with a confirmation link to activate their account, after which they can access Chatwoot and respond to messages. </p><p> Access to Chatwoot's features are based on following roles. </p><p> <b>Agent</b> - Agents with this role can only access inboxes, reports and conversations. They can assign conversations to other agents or themselves and resolve conversations.</p><p> <b>Administrator</b> - Administrator will have access to all Chatwoot features enabled for your account, including settings, along with all of a normal agents' privileges.</p>",
-    "AGENT_TYPES": [
-      {
-        "name": "administrator",
-        "label": "Administratör"
-      },
-      {
-        "name": "agent",
-        "label": "Agentkommando"
-      }
-    ],
+    "DESCRIPTION": "An agent is a member of your customer support team who can view and respond to user messages. The list below shows all the agents in your account.",
+    "LEARN_MORE": "Learn about user roles",
+    "AGENT_TYPES": {
+      "ADMINISTRATOR": "Administratör",
+      "AGENT": "Agent"
+    },
+    "COUNT": "{n} agent | {n} agents",
     "LIST": {
       "404": "Det finns inga agenter kopplade till detta konto",
       "TITLE": "Hantera agenter i ditt team",
@@ -23,7 +19,8 @@
       "STATUS": "Status",
       "ACTIONS": "Åtgärder",
       "VERIFIED": "Verifierad",
-      "VERIFICATION_PENDING": "Verifiering väntar"
+      "VERIFICATION_PENDING": "Verifiering väntar",
+      "AVAILABLE_CUSTOM_ROLE": "Available custom role permissions"
     },
     "ADD": {
       "TITLE": "Lägg till agent till ditt team",
@@ -35,33 +32,33 @@
           "PLACEHOLDER": "Ange ett namn på agenten"
         },
         "AGENT_TYPE": {
-          "LABEL": "Agentkommando typ",
+          "LABEL": "Roll",
           "PLACEHOLDER": "Välj en typ",
-          "ERROR": "Agentkommando krävs"
+          "ERROR": "Roll krävs"
         },
         "EMAIL": {
           "LABEL": "E-postadress",
           "PLACEHOLDER": "Ange en e-postadress till agenten"
         },
-        "SUBMIT": "Lägg till agentur"
+        "SUBMIT": "Lägg till agent"
       },
       "API": {
-        "SUCCESS_MESSAGE": "Agentkommando har lagts till",
-        "EXIST_MESSAGE": "Agentkommando redan använt, försök med en annan e-postadress",
+        "SUCCESS_MESSAGE": "Agenten har lagts till",
+        "EXIST_MESSAGE": "E-postadressen används redan, försök med en annan e-postadress",
         "ERROR_MESSAGE": "Kunde inte ansluta till Woot Server, försök igen senare"
       }
     },
     "DELETE": {
       "BUTTON_TEXT": "Radera",
       "API": {
-        "SUCCESS_MESSAGE": "Agentkommando har tagits bort",
+        "SUCCESS_MESSAGE": "Agenten har tagits bort",
         "ERROR_MESSAGE": "Kunde inte ansluta till Woot Server, försök igen senare"
       },
       "CONFIRM": {
         "TITLE": "Bekräfta borttagning",
         "MESSAGE": "Är du säker på att ta bort ",
         "YES": "Ja, ta bort ",
-        "NO": "No, Keep "
+        "NO": "Nej, behåll "
       }
     },
     "EDIT": {
@@ -72,31 +69,59 @@
           "PLACEHOLDER": "Ange ett namn på agenten"
         },
         "AGENT_TYPE": {
-          "LABEL": "Agentkommando typ",
-          "PLACEHOLDER": "Välj en typ",
-          "ERROR": "Agentkommando krävs"
+          "LABEL": "Roll",
+          "PLACEHOLDER": "Välj en roll",
+          "ERROR": "Roll krävs"
         },
         "EMAIL": {
           "LABEL": "E-postadress",
           "PLACEHOLDER": "Ange en e-postadress till agenten"
+        },
+        "AGENT_AVAILABILITY": {
+          "LABEL": "Tillgänglighet",
+          "PLACEHOLDER": "Please select an availability status",
+          "ERROR": "Availability is required"
         },
         "SUBMIT": "Redigera agent"
       },
       "BUTTON_TEXT": "Redigera",
       "CANCEL_BUTTON_TEXT": "Avbryt",
       "API": {
-        "SUCCESS_MESSAGE": "Agentkommando uppdaterades",
+        "SUCCESS_MESSAGE": "Agenten uppdaterad",
         "ERROR_MESSAGE": "Kunde inte ansluta till Woot Server, försök igen senare"
       },
       "PASSWORD_RESET": {
         "ADMIN_RESET_BUTTON": "Återställ lösenord",
         "ADMIN_SUCCESS_MESSAGE": "Ett e-postmeddelande med instruktioner för att återställa lösenordet har skickats till agenten",
-        "SUCCESS_MESSAGE": "Agentkommando återställs framgångsrikt",
+        "SUCCESS_MESSAGE": "Agentens lösenord återställd",
         "ERROR_MESSAGE": "Kunde inte ansluta till Woot Server, försök igen senare"
       }
     },
+    "SEARCH_PLACEHOLDER": "Sök efter agenter...",
+    "NO_RESULTS": "No agents found matching your search",
     "SEARCH": {
-      "NO_RESULTS": "Inga agenter hittades."
+      "NO_RESULTS": "Inga resultat hittades."
+    },
+    "MULTI_SELECTOR": {
+      "PLACEHOLDER": "Inget",
+      "TITLE": {
+        "AGENT": "Välj agent",
+        "TEAM": "Välj team"
+      },
+      "LIST": {
+        "NONE": "Inget"
+      },
+      "SEARCH": {
+        "NO_RESULTS": {
+          "AGENT": "Inga agenter hittades",
+          "TEAM": "Inga team hittades"
+        },
+        "PLACEHOLDER": {
+          "AGENT": "Sök efter agenter",
+          "TEAM": "Sök efter team",
+          "INPUT": "Search for agents"
+        }
+      }
     }
   }
 }

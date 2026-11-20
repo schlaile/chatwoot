@@ -1,126 +1,188 @@
-/* eslint no-console: 0 */
-import VueRouter from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 
-import auth from '../api/auth';
-import login from './login/login.routes';
-import dashboard from './dashboard/dashboard.routes';
-import authRoute from './auth/auth.routes';
 import { frontendURL } from '../helper/URLHelper';
+import dashboard from './dashboard/dashboard.routes';
+import store from 'dashboard/store';
+import { validateLoggedInRoutes } from '../helper/routeHelpers';
+import { isOnOnboardingView } from 'v3/helpers/RouteHelper';
+import {
+  getShopifyShopFromRedirect,
+  getTargetAccount,
+  isShopifyInstallRedirect,
+  isShopifyBillingAccount,
+  requiresShopifyBilling,
+} from 'v3/helpers/AuthHelper';
+import AnalyticsHelper from '../helper/AnalyticsHelper';
 
-const loggedInUser = auth.getCurrentUser() || {};
-const routes = [
-  ...login.routes,
-  ...dashboard.routes,
-  ...authRoute.routes,
-  {
-    path: '/',
-    redirect: frontendURL(`accounts/${loggedInUser.account_id}/dashboard`),
-  },
-];
+const ONBOARDING_STEPS = ['account_details', 'enrichment', 'inbox_setup'];
+const routes = [...dashboard.routes];
 
-window.roleWiseRoutes = {
-  agent: [],
-  administrator: [],
+const onboardingPath = step =>
+  step === 'inbox_setup' ? 'onboarding/inbox-setup' : 'onboarding';
+
+const shopifyBillingRedirect = query => {
+  const { plan_handle: planHandle, shop } = query || {};
+  if (!planHandle && !shop) return '';
+
+  const params = new URLSearchParams();
+  if (planHandle) params.set('plan_handle', planHandle);
+  if (shop) params.set('shop', shop);
+  return `settings/billing?${params.toString()}`;
 };
 
-// generateRoleWiseRoute - updates window object with agent/admin route
-const generateRoleWiseRoute = route => {
-  route.forEach(element => {
-    if (element.children) {
-      generateRoleWiseRoute(element.children);
+export const router = createRouter({ history: createWebHistory(), routes });
+
+export const validateAuthenticateRoutePermission = async (to, next) => {
+  const { isLoggedIn, getCurrentUser: user } = store.getters;
+
+  if (!isLoggedIn) {
+    const billingRedirect = shopifyBillingRedirect(to.query);
+    const integrationRedirect =
+      to.name === 'settings_integrations_shopify'
+        ? 'settings/integrations/shopify'
+        : '';
+    const pendingToken = to.query.shopify_pending_install;
+    const hasPendingInstall =
+      [
+        'settings_integrations_shopify',
+        'billing_settings_index',
+        'shopify_select_account',
+      ].includes(to.name) &&
+      typeof pendingToken === 'string' &&
+      /^[0-9a-f]{32}$/.test(pendingToken);
+    const pendingRedirect = hasPendingInstall
+      ? `settings/integrations/shopify?shopify_pending_install=${pendingToken}`
+      : '';
+    const redirectUrl =
+      pendingRedirect || billingRedirect || integrationRedirect;
+    const loginParams = new URLSearchParams();
+    if (redirectUrl) {
+      if (to.params?.accountId) {
+        loginParams.set('sso_account_id', to.params.accountId);
+      }
+      loginParams.set('redirect_url', redirectUrl);
     }
-    if (element.roles) {
-      element.roles.forEach(roleEl => {
-        window.roleWiseRoutes[roleEl].push(element.name);
-      });
+    const loginUrl = loginParams.size
+      ? `/app/login?${loginParams.toString()}`
+      : '/app/login';
+    window.location.assign(loginUrl);
+    return '';
+  }
+
+  const { accounts = [], account_id: accountId } = user;
+
+  if (!accounts.length) {
+    if (to.name === 'no_accounts') {
+      return next();
     }
+    return next(frontendURL('no-accounts'));
+  }
+
+  if (to.name === 'shopify_select_account') return next();
+
+  const requestedRedirectUrl = to.query?.redirect_url;
+  const pricingRedirectUrl = shopifyBillingRedirect(to.query);
+  const targetRedirectUrl = requestedRedirectUrl || pricingRedirectUrl;
+  const redirectAccount = getTargetAccount({
+    ssoAccountId: to.query?.sso_account_id,
+    redirectUrl: targetRedirectUrl,
+    user,
   });
-};
-// Create a object of routes
-// accessible by each role.
-// returns an object with roles as keys and routeArr as values
-generateRoleWiseRoute(routes);
+  if (
+    !to.params?.accountId &&
+    getShopifyShopFromRedirect(targetRedirectUrl) &&
+    !redirectAccount
+  ) {
+    return next(frontendURL(`accounts/${accountId}/dashboard`));
+  }
 
-export const router = new VueRouter({
-  mode: 'history',
-  routes, // short for routes: routes
-});
-
-const unProtectedRoutes = ['login', 'auth_signup', 'auth_reset_password'];
-
-const authIgnoreRoutes = [
-  'auth_confirmation',
-  'pushBack',
-  'auth_password_edit',
-];
-
-function routeIsAccessibleFor(route, role) {
-  return window.roleWiseRoutes[role].includes(route);
-}
-
-const routeValidators = [
-  {
-    protected: false,
-    loggedIn: true,
-    handler: () => 'dashboard',
-  },
-  {
-    protected: true,
-    loggedIn: false,
-    handler: () => 'login',
-  },
-  {
-    protected: true,
-    loggedIn: true,
-    handler: to => {
-      const user = auth.getCurrentUser();
-      const isAccessible = routeIsAccessibleFor(to, user.role);
-      return isAccessible ? null : 'dashboard';
-    },
-  },
-  {
-    protected: false,
-    loggedIn: false,
-    handler: () => null,
-  },
-];
-
-export const validateAuthenticateRoutePermission = (to, from, next) => {
-  const isLoggedIn = auth.isLoggedIn();
-  const isProtectedRoute = !unProtectedRoutes.includes(to.name);
-  const strategy = routeValidators.find(
-    validator =>
-      validator.protected === isProtectedRoute &&
-      validator.loggedIn === isLoggedIn
+  const routeAccountId = Number(
+    to.params?.accountId || redirectAccount?.id || accountId
   );
-  const nextRoute = strategy.handler(to.name);
+  const userAccount = accounts.find(a => a.id === routeAccountId);
+  const isAdmin = userAccount?.role === 'administrator';
+  const isActive = userAccount?.status === 'active';
+  const needsShopifyBilling = isAdmin && requiresShopifyBilling(userAccount);
+  const billingRedirect =
+    isAdmin && isShopifyBillingAccount(userAccount)
+      ? shopifyBillingRedirect(to.query)
+      : '';
+  const needsOnboarding =
+    ONBOARDING_STEPS.includes(userAccount?.onboarding_step) &&
+    isAdmin &&
+    isActive &&
+    !needsShopifyBilling;
+
+  if (to.name === 'captain_toolset_install_link') {
+    return next({
+      name: 'captain_toolset_install',
+      params: { accountId: routeAccountId },
+      query: to.query,
+    });
+  }
+
+  if (to.name === 'no_accounts' || !to.name) {
+    if (billingRedirect) {
+      return next(frontendURL(`accounts/${routeAccountId}/${billingRedirect}`));
+    }
+    if (requestedRedirectUrl) {
+      if (!isShopifyInstallRedirect(requestedRedirectUrl)) {
+        return next(
+          frontendURL(`accounts/${routeAccountId}/${requestedRedirectUrl}`)
+        );
+      }
+
+      return next(
+        frontendURL(
+          `shopify/select-account?${requestedRedirectUrl.split('?')[1]}`
+        )
+      );
+    }
+    if (needsShopifyBilling) {
+      return next(frontendURL(`accounts/${routeAccountId}/settings/billing`));
+    }
+    const target = needsOnboarding
+      ? onboardingPath(userAccount?.onboarding_step)
+      : 'dashboard';
+    return next(frontendURL(`accounts/${routeAccountId}/${target}`));
+  }
+
+  if (needsShopifyBilling && to.name !== 'billing_settings_index') {
+    return next({
+      path: frontendURL(`accounts/${routeAccountId}/settings/billing`),
+      query: to.query.shopify_pending_install
+        ? { shopify_pending_install: to.query.shopify_pending_install }
+        : {},
+    });
+  }
+
+  if (needsOnboarding && !isOnOnboardingView(to)) {
+    return next(
+      frontendURL(
+        `accounts/${routeAccountId}/${onboardingPath(userAccount?.onboarding_step)}`
+      )
+    );
+  }
+  if (!needsOnboarding && isOnOnboardingView(to)) {
+    return next(frontendURL(`accounts/${routeAccountId}/dashboard`));
+  }
+
+  const nextRoute = validateLoggedInRoutes(to, store.getters.getCurrentUser);
   return nextRoute ? next(frontendURL(nextRoute)) : next();
 };
 
-const validateRouteAccess = (to, from, next) => {
-  if (
-    window.chatwootConfig.signupEnabled !== 'true' &&
-    to.meta &&
-    to.meta.requireSignupEnabled
-  ) {
-    const user = auth.getCurrentUser();
-    next(frontendURL(`accounts/${user.account_id}/dashboard`));
-  }
+export const initalizeRouter = () => {
+  const userAuthentication = store.dispatch('setUser');
 
-  if (authIgnoreRoutes.includes(to.name)) {
-    return next();
-  }
-  return validateAuthenticateRoutePermission(to, from, next);
+  router.beforeEach(async (to, _from, next) => {
+    AnalyticsHelper.page(to.name || '', {
+      path: to.path,
+      name: to.name,
+    });
+
+    await userAuthentication;
+    await validateAuthenticateRoutePermission(to, next, store);
+  });
 };
-
-// protecting routes
-router.beforeEach((to, from, next) => {
-  if (!to.name) {
-    const user = auth.getCurrentUser();
-    return next(frontendURL(`accounts/${user.account_id}/dashboard`));
-  }
-
-  return validateRouteAccess(to, from, next);
-});
 
 export default router;

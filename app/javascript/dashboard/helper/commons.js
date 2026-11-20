@@ -1,5 +1,8 @@
-/* eslint no-console: 0 */
 /* eslint no-param-reassign: 0 */
+
+import getUuid from 'widget/helpers/uuid';
+import { MESSAGE_STATUS, MESSAGE_TYPE } from 'shared/constants/messages';
+
 export default () => {
   if (!Array.prototype.last) {
     Object.assign(Array.prototype, {
@@ -10,19 +13,110 @@ export default () => {
   }
 };
 
+export const isEmptyObject = obj =>
+  Object.keys(obj).length === 0 && obj.constructor === Object;
+
+export const isJSONValid = value => {
+  try {
+    JSON.parse(value);
+  } catch (e) {
+    return false;
+  }
+  return true;
+};
+
 export const getTypingUsersText = (users = []) => {
   const count = users.length;
+  const [firstUser, secondUser] = users;
+
   if (count === 1) {
-    const [user] = users;
-    return `${user.name} is typing`;
+    return ['TYPING.ONE', { user: firstUser.name }];
   }
 
   if (count === 2) {
-    const [first, second] = users;
-    return `${first.name} and ${second.name} are typing`;
+    return [
+      'TYPING.TWO',
+      { user: firstUser.name, secondUser: secondUser.name },
+    ];
   }
 
-  const [user] = users;
-  const rest = users.length - 1;
-  return `${user.name} and ${rest} others are typing`;
+  return ['TYPING.MULTIPLE', { user: firstUser.name, count: count - 1 }];
+};
+
+export const createPendingMessage = data => {
+  const timestamp = Math.floor(new Date().getTime() / 1000);
+  const tempMessageId = getUuid();
+  const { message, pendingMessageContent, file } = data;
+  const tempAttachments = [{ id: tempMessageId }];
+  const pendingMessage = {
+    ...data,
+    content: pendingMessageContent || message || null,
+    id: tempMessageId,
+    echo_id: tempMessageId,
+    status: MESSAGE_STATUS.PROGRESS,
+    created_at: timestamp,
+    message_type: MESSAGE_TYPE.OUTGOING,
+    conversation_id: data.conversationId,
+    attachments: file ? tempAttachments : null,
+  };
+
+  return pendingMessage;
+};
+
+export const convertToAttributeSlug = text => {
+  return text
+    .toLowerCase()
+    .replace(/[^\w ]+/g, '')
+    .replace(/ +/g, '_');
+};
+
+export const convertToCategorySlug = text => {
+  return text
+    .toLowerCase()
+    .replace(/[^\w ]+/g, '')
+    .replace(/ +/g, '-');
+};
+
+export const convertToPortalSlug = text => {
+  return text
+    .toLowerCase()
+    .replace(/[^\w ]+/g, '')
+    .replace(/ +/g, '-');
+};
+
+export const convertToArticleSlug = text => {
+  return text
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
+/**
+ * Strip curly braces, commas and leading/trailing whitespace from a search key.
+ * Eg. "{{contact.name}}," => "contact.name"
+ * @param {string} searchKey
+ * @returns {string}
+ */
+export const sanitizeVariableSearchKey = (searchKey = '') => {
+  return searchKey
+    .replace(/[{}]/g, '') // remove all curly braces
+    .replace(/,/g, '') // remove commas
+    .trim();
+};
+
+/**
+ * Convert underscore-separated string to title case.
+ * Eg. "round_robin" => "Round Robin"
+ * @param {string} str
+ * @returns {string}
+ */
+export const formatToTitleCase = str => {
+  return (
+    str
+      ?.replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase())
+      .trim() || ''
+  );
 };

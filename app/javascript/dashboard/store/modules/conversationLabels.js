@@ -1,6 +1,10 @@
-import Vue from 'vue';
 import * as types from '../mutation-types';
 import ConversationAPI from '../../api/conversations';
+
+// Each update sends the whole label list, so an update waits for the previous
+// one on the same conversation, only the latest one writes its result, and a
+// failure rolls back to the last list the server confirmed.
+const pendingUpdates = {};
 
 const state = {
   records: {},
@@ -40,15 +44,28 @@ export const actions = {
       });
     }
   },
-  update: async ({ commit }, { conversationId, labels }) => {
+  update: async ({ commit, state: $state }, { conversationId, labels }) => {
+    pendingUpdates[conversationId] ??= {
+      savedLabels: $state.records[Number(conversationId)],
+    };
+    const pending = pendingUpdates[conversationId];
+    const request = Promise.resolve(pending.request)
+      .catch(() => {})
+      .then(() => ConversationAPI.updateLabels(conversationId, labels));
+    pending.request = request;
+
+    commit(types.default.SET_CONVERSATION_LABELS, {
+      id: conversationId,
+      data: labels,
+    });
     commit(types.default.SET_CONVERSATION_LABELS_UI_FLAG, {
       isUpdating: true,
     });
     try {
-      const response = await ConversationAPI.updateLabels(
-        conversationId,
-        labels
-      );
+      const response = await request;
+      pending.savedLabels = response.data.payload;
+      if (pending.request !== request) return;
+      delete pendingUpdates[conversationId];
       commit(types.default.SET_CONVERSATION_LABELS, {
         id: conversationId,
         data: response.data.payload,
@@ -58,6 +75,12 @@ export const actions = {
         isError: false,
       });
     } catch (error) {
+      if (pending.request !== request) return;
+      delete pendingUpdates[conversationId];
+      commit(types.default.SET_CONVERSATION_LABELS, {
+        id: conversationId,
+        data: pending.savedLabels,
+      });
       commit(types.default.SET_CONVERSATION_LABELS_UI_FLAG, {
         isUpdating: false,
         isError: true,
@@ -80,12 +103,15 @@ export const mutations = {
     };
   },
   [types.default.SET_CONVERSATION_LABELS]: ($state, { id, data }) => {
-    Vue.set($state.records, id, data);
+    $state.records = { ...$state.records, [id]: data };
   },
   [types.default.SET_BULK_CONVERSATION_LABELS]: ($state, conversations) => {
+    const updatedRecords = { ...$state.records };
     conversations.forEach(conversation => {
-      Vue.set($state.records, conversation.id, conversation.labels);
+      updatedRecords[conversation.id] = conversation.labels;
     });
+
+    $state.records = updatedRecords;
   },
 };
 

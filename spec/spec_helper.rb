@@ -1,8 +1,6 @@
-require 'simplecov'
 require 'webmock/rspec'
 
-SimpleCov.start 'rails'
-WebMock.allow_net_connect!
+WebMock.disable_net_connect!(allow_localhost: true)
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -14,4 +12,8 @@ RSpec.configure do |config|
   end
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
+
+  def with_modified_env(options, &)
+    ClimateControl.modify(options, &)
+  end
 end

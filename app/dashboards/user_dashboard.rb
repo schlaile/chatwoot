@@ -9,8 +9,13 @@ class UserDashboard < Administrate::BaseDashboard
   # on pages throughout the dashboard.
   ATTRIBUTE_TYPES = {
     account_users: Field::HasMany,
-    id: Field::Number,
+    id: Field::Number.with_options(searchable: true),
     avatar_url: AvatarField,
+    avatar: Field::ActiveStorage.with_options(
+      destroy_url: proc do |_namespace, _resource, attachment|
+        [:avatar_super_admin_user, { attachment_id: attachment.id }]
+      end
+    ),
     provider: Field::String,
     uid: Field::String,
     password: Field::Password,
@@ -20,16 +25,17 @@ class UserDashboard < Administrate::BaseDashboard
     current_sign_in_ip: Field::String,
     last_sign_in_ip: Field::String,
     confirmation_token: Field::String,
-    confirmed_at: Field::DateTime,
+    confirmed_at: ConfirmedAtField,
     confirmation_sent_at: Field::DateTime,
     unconfirmed_email: Field::String,
-    name: Field::String,
+    name: Field::String.with_options(searchable: true),
     display_name: Field::String,
-    email: Field::String,
+    email: Field::String.with_options(searchable: true),
     tokens: Field::String.with_options(searchable: false),
     created_at: Field::DateTime,
     updated_at: Field::DateTime,
     pubsub_token: Field::String,
+    type: Field::Select.with_options(collection: [nil, 'SuperAdmin']),
     accounts: CountField
   }.freeze
 
@@ -44,6 +50,7 @@ class UserDashboard < Administrate::BaseDashboard
     name
     email
     accounts
+    type
   ].freeze
 
   # SHOW_PAGE_ATTRIBUTES
@@ -51,12 +58,14 @@ class UserDashboard < Administrate::BaseDashboard
   SHOW_PAGE_ATTRIBUTES = %i[
     id
     avatar_url
-    unconfirmed_email
     name
+    type
     display_name
     email
+    unconfirmed_email
     created_at
     updated_at
+    confirmed_at
     account_users
   ].freeze
 
@@ -65,9 +74,12 @@ class UserDashboard < Administrate::BaseDashboard
   # on the model's form (`new` and `edit`) pages.
   FORM_ATTRIBUTES = %i[
     name
+    avatar
     display_name
     email
     password
+    confirmed_at
+    type
   ].freeze
 
   # COLLECTION_FILTERS
@@ -80,7 +92,12 @@ class UserDashboard < Administrate::BaseDashboard
   #   COLLECTION_FILTERS = {
   #     open: ->(resources) { resources.where(open: true) }
   #   }.freeze
-  COLLECTION_FILTERS = {}.freeze
+  COLLECTION_FILTERS = {
+    super_admin: ->(resources) { resources.where(type: 'SuperAdmin') },
+    confirmed: ->(resources) { resources.where.not(confirmed_at: nil) },
+    unconfirmed: ->(resources) { resources.where(confirmed_at: nil) },
+    recent: ->(resources) { resources.where('created_at > ?', 30.days.ago) }
+  }.freeze
 
   # Overwrite this method to customize how users are displayed
   # across all pages of the admin dashboard.

@@ -12,9 +12,9 @@ const newAccountInfo = {
   accountName: 'Company two',
 };
 
-const commit = jest.fn();
+const commit = vi.fn();
 global.axios = axios;
-jest.mock('axios');
+vi.mock('axios');
 
 describe('#actions', () => {
   describe('#get', () => {
@@ -35,14 +35,29 @@ describe('#actions', () => {
         [types.default.SET_ACCOUNT_UI_FLAG, { isFetchingItem: false }],
       ]);
     });
+
+    it('fetches an explicitly selected account outside an account route', async () => {
+      axios.get.mockResolvedValue({ data: accountData });
+
+      await actions.get({ commit }, { accountId: 1, silent: true });
+
+      expect(axios.get).toHaveBeenCalledWith('/api/v1/accounts/1');
+      expect(commit).toHaveBeenCalledWith(
+        types.default.ADD_ACCOUNT,
+        accountData
+      );
+    });
   });
 
   describe('#update', () => {
     it('sends correct actions if API is success', async () => {
-      axios.patch.mockResolvedValue();
+      axios.patch.mockResolvedValue({
+        data: { id: 1, name: 'John' },
+      });
       await actions.update({ commit, getters }, accountData);
       expect(commit.mock.calls).toEqual([
         [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: true }],
+        [types.default.EDIT_ACCOUNT, { id: 1, name: 'John' }],
         [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: false }],
       ]);
     });
@@ -77,6 +92,43 @@ describe('#actions', () => {
       expect(commit.mock.calls).toEqual([
         [types.default.SET_ACCOUNT_UI_FLAG, { isCreating: true }],
         [types.default.SET_ACCOUNT_UI_FLAG, { isCreating: false }],
+      ]);
+    });
+  });
+
+  describe('#toggleDeletion', () => {
+    it('sends correct actions with delete action if API is success', async () => {
+      axios.post.mockResolvedValue({});
+      await actions.toggleDeletion({ commit }, { action_type: 'delete' });
+      expect(commit.mock.calls).toEqual([
+        [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: true }],
+        [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: false }],
+      ]);
+      expect(axios.post.mock.calls[0][1]).toEqual({
+        action_type: 'delete',
+      });
+    });
+
+    it('sends correct actions with undelete action if API is success', async () => {
+      axios.post.mockResolvedValue({});
+      await actions.toggleDeletion({ commit }, { action_type: 'undelete' });
+      expect(commit.mock.calls).toEqual([
+        [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: true }],
+        [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: false }],
+      ]);
+      expect(axios.post.mock.calls[0][1]).toEqual({
+        action_type: 'undelete',
+      });
+    });
+
+    it('sends correct actions if API is error', async () => {
+      axios.post.mockRejectedValue({ message: 'Incorrect header' });
+      await expect(
+        actions.toggleDeletion({ commit }, { action_type: 'delete' })
+      ).rejects.toThrow(Error);
+      expect(commit.mock.calls).toEqual([
+        [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: true }],
+        [types.default.SET_ACCOUNT_UI_FLAG, { isUpdating: false }],
       ]);
     });
   });

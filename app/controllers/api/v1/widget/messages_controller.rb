@@ -1,4 +1,5 @@
 class Api::V1::Widget::MessagesController < Api::V1::Widget::BaseController
+  before_action :prevent_reply_to_resolved_conversation, only: [:create]
   before_action :set_conversation, only: [:create]
   before_action :set_message, only: [:update]
 
@@ -8,19 +9,25 @@ class Api::V1::Widget::MessagesController < Api::V1::Widget::BaseController
 
   def create
     @message = conversation.messages.new(message_params)
-    @message.save
     build_attachment
+    @message.save!
   end
 
   def update
     if @message.content_type == 'input_email'
       @message.update!(submitted_email: contact_email)
-      update_contact(contact_email)
+      identify_action = ContactIdentifyAction.new(
+        contact: @contact,
+        params: { email: contact_email, name: contact_name },
+        retain_original_contact_name: true
+      )
+      @contact = identify_action.perform
+      Conversations::UnverifiedContactNoteService.new(conversation: @message.conversation, matches: identify_action.unverified_matches).perform
     else
       @message.update!(message_update_params[:message])
     end
   rescue StandardError => e
-    render json: { error: @contact.errors, message: e.message }.to_json, status: 500
+    render json: { error: @contact.errors, message: e.message }.to_json, status: :internal_server_error
   end
 
   private
@@ -31,56 +38,39 @@ class Api::V1::Widget::MessagesController < Api::V1::Widget::BaseController
     params[:message][:attachments].each do |uploaded_attachment|
       attachment = @message.attachments.new(
         account_id: @message.account_id,
-        file_type: helpers.file_type(uploaded_attachment&.content_type)
+        file: uploaded_attachment
       )
-      attachment.file.attach(uploaded_attachment)
+
+      attachment.file_type = helpers.file_type(uploaded_attachment&.content_type) if uploaded_attachment.is_a?(ActionDispatch::Http::UploadedFile)
     end
-    @message.save!
+  end
+
+  # Hiding the reply box does not stop requests reaching this endpoint, so the setting is
+  # enforced here.
+  def prevent_reply_to_resolved_conversation
+    return unless conversation&.resolved?
+    return if inbox.allow_messages_after_resolved
+
+    render json: { error: I18n.t('errors.conversations.resolved') }, status: :forbidden
   end
 
   def set_conversation
-    @conversation = ::Conversation.create!(conversation_params) if conversation.nil?
+    return if conversation.present?
+
+    @conversation = create_conversation
+    apply_labels if permitted_params[:labels].present?
   end
 
-  def message_params
-    {
-      account_id: conversation.account_id,
-      sender: @contact,
-      content: permitted_params[:message][:content],
-      inbox_id: conversation.inbox_id,
-      echo_id: permitted_params[:message][:echo_id],
-      message_type: :incoming
-    }
-  end
-
-  def conversation_params
-    {
-      account_id: inbox.account_id,
-      inbox_id: inbox.id,
-      contact_id: @contact.id,
-      contact_inbox_id: @contact_inbox.id,
-      additional_attributes: {
-        browser: browser_params,
-        referer: permitted_params[:message][:referer_url],
-        initiated_at: timestamp_params
-      }
-    }
-  end
-
-  def timestamp_params
-    {
-      timestamp: permitted_params[:message][:timestamp]
-    }
-  end
-
-  def inbox
-    @inbox ||= ::Inbox.find_by(id: auth_token_params[:inbox_id])
+  def apply_labels
+    valid_labels = inbox.account.labels.where(title: permitted_params[:labels]).pluck(:title)
+    @conversation.update_labels(valid_labels) if valid_labels.present?
   end
 
   def message_finder_params
     {
       filter_internal_messages: true,
-      before: permitted_params[:before]
+      before: permitted_params[:before],
+      after: permitted_params[:after]
     }
   end
 
@@ -88,39 +78,27 @@ class Api::V1::Widget::MessagesController < Api::V1::Widget::BaseController
     @message_finder ||= MessageFinder.new(conversation, message_finder_params)
   end
 
-  def update_contact(email)
-    contact_with_email = @account.contacts.find_by(email: email)
-    if contact_with_email
-      @contact = ::ContactMergeAction.new(
-        account: @account,
-        base_contact: contact_with_email,
-        mergee_contact: @contact
-      ).perform
-    else
-      @contact.update!(
-        email: email,
-        name: contact_name
-      )
-    end
-  end
-
-  def contact_email
-    permitted_params[:contact][:email].downcase
-  end
-
-  def contact_name
-    contact_email.split('@')[0]
-  end
-
   def message_update_params
-    params.permit(message: [{ submitted_values: [:name, :title, :value] }])
+    params.permit(message: [{ submitted_values: [:name, :title, :value, { csat_survey_response: [:feedback_message, :rating] }] }])
   end
 
   def permitted_params
-    params.permit(:id, :before, :website_token, contact: [:email], message: [:content, :referer_url, :timestamp, :echo_id])
+    # timestamp parameter is used in create conversation method
+    # custom_attributes and labels are applied when a new conversation is created alongside the first message
+    params.permit(
+      :id, :before, :after, :website_token,
+      contact: [:name, :email],
+      message: [:content, :referer_url, :timestamp, :echo_id, :reply_to],
+      custom_attributes: {},
+      labels: []
+    )
   end
 
   def set_message
-    @message = @web_widget.inbox.messages.find(permitted_params[:id])
+    # `conversation.messages.find` would be simpler, but `conversation` is `conversations.last`,
+    # which means a visitor with more than one open thread could not edit a message in any
+    # but their most recent one. Scoping across all of the visitor's conversations keeps the
+    # happy path correct for that future multi-conversation widget flow.
+    @message = Message.where(conversation_id: conversations.select(:id)).find(permitted_params[:id])
   end
 end

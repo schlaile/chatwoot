@@ -1,0 +1,479 @@
+require 'rails_helper'
+
+RSpec.describe 'Linear Integration API', type: :request do
+  let(:account) { create(:account) }
+  let(:user) { create(:user) }
+  let(:api_key) { 'valid_api_key' }
+  let(:agent) { create(:user, account: account, role: :agent) }
+  let(:processor_service) { instance_double(Integrations::Linear::ProcessorService) }
+
+  before do
+    create(:integrations_hook, :linear, account: account)
+    allow(Integrations::Linear::ProcessorService).to receive(:new).with(account: account).and_return(processor_service)
+  end
+
+  describe 'DELETE /api/v1/accounts/:account_id/integrations/linear' do
+    let(:admin) { create(:user, account: account, role: :administrator) }
+
+    it 'deletes the linear integration when the user is an administrator' do
+      # Stub the HTTP call to Linear's revoke endpoint
+      allow(HTTParty).to receive(:post).with(
+        'https://api.linear.app/oauth/revoke',
+        anything
+      ).and_return(instance_double(HTTParty::Response, success?: true))
+
+      delete "/api/v1/accounts/#{account.id}/integrations/linear",
+             headers: admin.create_new_auth_token,
+             as: :json
+      expect(response).to have_http_status(:ok)
+      expect(account.hooks.count).to eq(0)
+    end
+
+    it 'returns unauthorized for an agent and keeps the integration' do
+      delete "/api/v1/accounts/#{account.id}/integrations/linear",
+             headers: agent.create_new_auth_token,
+             as: :json
+      expect(response).to have_http_status(:unauthorized)
+      expect(account.hooks.count).to eq(1)
+    end
+  end
+
+  describe 'GET /api/v1/accounts/:account_id/integrations/linear/teams' do
+    context 'when it is an authenticated user' do
+      context 'when data is retrieved successfully' do
+        let(:teams_data) { { data: [{ 'id' => 'team1', 'name' => 'Team One' }] } }
+
+        it 'returns team data' do
+          allow(processor_service).to receive(:teams).and_return(teams_data)
+          get "/api/v1/accounts/#{account.id}/integrations/linear/teams",
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('Team One')
+        end
+      end
+
+      context 'when data retrieval fails' do
+        it 'returns error message' do
+          allow(processor_service).to receive(:teams).and_return(error: 'error message')
+          get "/api/v1/accounts/#{account.id}/integrations/linear/teams",
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.body).to include('error message')
+        end
+      end
+    end
+  end
+
+  describe 'GET /api/v1/accounts/:account_id/integrations/linear/team_entities' do
+    let(:team_id) { 'team1' }
+
+    context 'when it is an authenticated user' do
+      context 'when data is retrieved successfully' do
+        let(:team_entities_data) do
+          { data: {
+            users: [{ 'id' => 'user1', 'name' => 'User One' }],
+            projects: [{ 'id' => 'project1', 'name' => 'Project One' }],
+            states: [{ 'id' => 'state1', 'name' => 'State One' }],
+            labels: [{ 'id' => 'label1', 'name' => 'Label One' }]
+          } }
+        end
+
+        it 'returns team entities data' do
+          allow(processor_service).to receive(:team_entities).with(team_id).and_return(team_entities_data)
+          get "/api/v1/accounts/#{account.id}/integrations/linear/team_entities",
+              params: { team_id: team_id },
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('User One')
+          expect(response.body).to include('Project One')
+          expect(response.body).to include('State One')
+          expect(response.body).to include('Label One')
+        end
+      end
+
+      context 'when data retrieval fails' do
+        it 'returns error message' do
+          allow(processor_service).to receive(:team_entities).with(team_id).and_return(error: 'error message')
+          get "/api/v1/accounts/#{account.id}/integrations/linear/team_entities",
+              params: { team_id: team_id },
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.body).to include('error message')
+        end
+      end
+    end
+  end
+
+  describe 'POST /api/v1/accounts/:account_id/integrations/linear/create_issue' do
+    before { create(:inbox_member, inbox: conversation.inbox, user: agent) }
+
+    let(:inbox) { create(:inbox, account: account) }
+    let(:conversation) { create(:conversation, account: account, inbox: inbox) }
+    let(:issue_params) do
+      {
+        team_id: 'team1',
+        title: 'Sample Issue',
+        description: 'This is a sample issue.',
+        assignee_id: 'user1',
+        priority: 'high',
+        state_id: 'state1',
+        label_ids: ['label1'],
+        conversation_id: conversation.display_id
+      }
+    end
+
+    context 'when it is an authenticated user' do
+      context 'when the issue is created successfully' do
+        let(:created_issue) { { data: { identifier: 'ENG-123', title: 'Sample Issue' } } }
+
+        it 'returns the created issue' do
+          allow(processor_service).to receive(:create_issue).with(issue_params.stringify_keys, agent).and_return(created_issue)
+
+          post "/api/v1/accounts/#{account.id}/integrations/linear/create_issue",
+               params: issue_params,
+               headers: agent.create_new_auth_token,
+               as: :json
+
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('Sample Issue')
+        end
+
+        it 'creates activity message when conversation is provided' do
+          allow(processor_service).to receive(:create_issue).with(issue_params.stringify_keys, agent).and_return(created_issue)
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/create_issue",
+                 params: issue_params,
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.to have_enqueued_job(Conversations::ActivityMessageJob)
+            .with(conversation, {
+                    account_id: conversation.account_id,
+                    inbox_id: conversation.inbox_id,
+                    message_type: :activity,
+                    content: "Linear issue ENG-123 was created by #{agent.name}"
+                  })
+        end
+      end
+
+      context 'when issue creation fails' do
+        it 'returns error message and does not create activity message' do
+          allow(processor_service).to receive(:create_issue).with(issue_params.stringify_keys, agent).and_return(error: 'error message')
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/create_issue",
+                 params: issue_params,
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.body).to include('error message')
+        end
+      end
+    end
+  end
+
+  describe 'POST /api/v1/accounts/:account_id/integrations/linear/link_issue' do
+    before { create(:inbox_member, inbox: conversation.inbox, user: agent) }
+
+    let(:issue_id) { 'ENG-456' }
+    let(:conversation) { create(:conversation, account: account) }
+    let(:link) { "#{ENV.fetch('FRONTEND_URL', nil)}/app/accounts/#{account.id}/conversations/#{conversation.display_id}" }
+    let(:title) { 'Sample Issue' }
+
+    context 'when it is an authenticated user' do
+      context 'when the issue is linked successfully' do
+        let(:linked_issue) { { data: { 'id' => 'issue1', 'link' => 'https://linear.app/issue1' } } }
+
+        it 'returns the linked issue and creates activity message' do
+          allow(processor_service).to receive(:link_issue).with(link, issue_id, title, agent).and_return(linked_issue)
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/link_issue",
+                 params: { conversation_id: conversation.display_id, issue_id: issue_id, title: title },
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.to have_enqueued_job(Conversations::ActivityMessageJob)
+            .with(conversation, {
+                    account_id: conversation.account_id,
+                    inbox_id: conversation.inbox_id,
+                    message_type: :activity,
+                    content: "Linear issue ENG-456 was linked by #{agent.name}"
+                  })
+
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('https://linear.app/issue1')
+        end
+      end
+
+      context 'when issue linking fails' do
+        it 'returns error message and does not create activity message' do
+          allow(processor_service).to receive(:link_issue).with(link, issue_id, title, agent).and_return(error: 'error message')
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/link_issue",
+                 params: { conversation_id: conversation.display_id, issue_id: issue_id, title: title },
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.body).to include('error message')
+        end
+      end
+    end
+  end
+
+  describe 'POST /api/v1/accounts/:account_id/integrations/linear/unlink_issue' do
+    before do
+      create(:inbox_member, inbox: conversation.inbox, user: agent)
+      allow(processor_service).to receive(:linked_issues).with(conversation_link).and_return(data: [issue_attachment])
+    end
+
+    let(:conversation_link) { "#{ENV.fetch('FRONTEND_URL', nil)}/app/accounts/#{account.id}/conversations/#{conversation.display_id}" }
+    let(:issue_attachment) { { 'id' => link_id, 'issue' => { 'identifier' => 'ENG-789' } } }
+    let(:link_id) { 'attachment1' }
+    let(:issue_id) { 'ENG-789' }
+    let(:conversation) { create(:conversation, account: account) }
+
+    context 'when it is an authenticated user' do
+      context 'when the attachment belongs to another conversation' do
+        it 'returns not found without unlinking or creating an activity' do
+          allow(processor_service).to receive(:linked_issues).with(conversation_link).and_return(data: [{ 'id' => 'other-attachment' }])
+          expect(processor_service).not_to receive(:unlink_issue)
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/unlink_issue",
+                 params: { link_id: link_id, issue_id: issue_id, conversation_id: conversation.display_id },
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+          expect(response).to have_http_status(:not_found)
+        end
+      end
+
+      context 'when the conversation has no attachments' do
+        it 'returns not found without unlinking or creating an activity' do
+          allow(processor_service).to receive(:linked_issues).with(conversation_link).and_return(data: [])
+          expect(processor_service).not_to receive(:unlink_issue)
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/unlink_issue",
+                 params: { link_id: link_id, issue_id: issue_id, conversation_id: conversation.display_id },
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+          expect(response).to have_http_status(:not_found)
+        end
+      end
+
+      context 'when attachment lookup fails' do
+        it 'returns the provider error without unlinking or creating an activity' do
+          allow(processor_service).to receive(:linked_issues).with(conversation_link).and_return(error: 'Linear unavailable')
+          expect(processor_service).not_to receive(:unlink_issue)
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/unlink_issue",
+                 params: { link_id: link_id, issue_id: issue_id, conversation_id: conversation.display_id },
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.parsed_body['error']).to eq('Linear unavailable')
+        end
+      end
+
+      context 'when the issue is unlinked successfully' do
+        let(:unlinked_issue) { { data: { 'id' => 'issue1', 'link' => 'https://linear.app/issue1' } } }
+
+        ['ENG-999', nil].each do |submitted_issue_id|
+          it "records the verified identifier when the supplied issue id is #{submitted_issue_id.inspect}" do
+            allow(processor_service).to receive(:unlink_issue).with(link_id).and_return(unlinked_issue)
+            request_params = { link_id: link_id, conversation_id: conversation.display_id }
+            request_params[:issue_id] = submitted_issue_id if submitted_issue_id
+
+            expect do
+              post "/api/v1/accounts/#{account.id}/integrations/linear/unlink_issue",
+                   params: request_params, headers: agent.create_new_auth_token, as: :json
+            end.to have_enqueued_job(Conversations::ActivityMessageJob)
+              .with(conversation, hash_including(content: "Linear issue ENG-789 was unlinked by #{agent.name}"))
+
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
+        it 'returns the unlinked issue and creates activity message' do
+          allow(processor_service).to receive(:unlink_issue).with(link_id).and_return(unlinked_issue)
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/unlink_issue",
+                 params: { link_id: link_id, issue_id: issue_id, conversation_id: conversation.display_id },
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.to have_enqueued_job(Conversations::ActivityMessageJob)
+            .with(conversation, {
+                    account_id: conversation.account_id,
+                    inbox_id: conversation.inbox_id,
+                    message_type: :activity,
+                    content: "Linear issue ENG-789 was unlinked by #{agent.name}"
+                  })
+
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('https://linear.app/issue1')
+        end
+      end
+
+      context 'when issue unlinking fails' do
+        it 'returns error message and does not create activity message' do
+          allow(processor_service).to receive(:unlink_issue).with(link_id).and_return(error: 'error message')
+
+          expect do
+            post "/api/v1/accounts/#{account.id}/integrations/linear/unlink_issue",
+                 params: { link_id: link_id, issue_id: issue_id, conversation_id: conversation.display_id },
+                 headers: agent.create_new_auth_token,
+                 as: :json
+          end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.body).to include('error message')
+        end
+      end
+    end
+  end
+
+  describe 'GET /api/v1/accounts/:account_id/integrations/linear/search_issue' do
+    let(:term) { 'issue' }
+
+    context 'when it is an authenticated user' do
+      context 'when search is successful' do
+        let(:search_results) { { data: [{ 'id' => 'issue1', 'title' => 'Sample Issue' }] } }
+
+        it 'returns search results' do
+          allow(processor_service).to receive(:search_issue).with(term).and_return(search_results)
+          get "/api/v1/accounts/#{account.id}/integrations/linear/search_issue",
+              params: { q: term },
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('Sample Issue')
+        end
+      end
+
+      context 'when search fails' do
+        it 'returns error message' do
+          allow(processor_service).to receive(:search_issue).with(term).and_return(error: 'error message')
+          get "/api/v1/accounts/#{account.id}/integrations/linear/search_issue",
+              params: { q: term },
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.body).to include('error message')
+        end
+      end
+    end
+  end
+
+  describe 'GET /api/v1/accounts/:account_id/integrations/linear/linked_issues' do
+    before { create(:inbox_member, inbox: conversation.inbox, user: agent) }
+
+    let(:conversation) { create(:conversation, account: account) }
+    let(:link) { "#{ENV.fetch('FRONTEND_URL', nil)}/app/accounts/#{account.id}/conversations/#{conversation.display_id}" }
+
+    context 'when it is an authenticated user' do
+      context 'when linked issue is found' do
+        let(:linked_issue) { { data: [{ 'id' => 'issue1', 'title' => 'Sample Issue' }] } }
+
+        it 'returns linked issue' do
+          allow(processor_service).to receive(:linked_issues).with(link).and_return(linked_issue)
+          get "/api/v1/accounts/#{account.id}/integrations/linear/linked_issues",
+              params: { conversation_id: conversation.display_id },
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('Sample Issue')
+        end
+      end
+
+      context 'when linked issue is not found' do
+        it 'returns error message' do
+          allow(processor_service).to receive(:linked_issues).with(link).and_return(error: 'error message')
+          get "/api/v1/accounts/#{account.id}/integrations/linear/linked_issues",
+              params: { conversation_id: conversation.display_id },
+              headers: agent.create_new_auth_token,
+              as: :json
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.body).to include('error message')
+        end
+      end
+    end
+  end
+
+  describe 'conversation authorization' do
+    let(:conversation) { create(:conversation, account: account) }
+
+    %w[create_issue link_issue unlink_issue linked_issues].each do |action|
+      context "when calling #{action}" do
+        it 'denies an agent outside the inbox and team before calling Linear' do
+          expect(Integrations::Linear::ProcessorService).not_to receive(:new)
+
+          expect do
+            public_send(action == 'linked_issues' ? :get : :post,
+                        "/api/v1/accounts/#{account.id}/integrations/linear/#{action}",
+                        params: { conversation_id: conversation.display_id, link_id: 'attachment1', issue_id: 'ENG-123' },
+                        headers: agent.create_new_auth_token, as: :json)
+          end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
+    end
+
+    context 'when reading linked issues' do
+      let(:link) { "#{ENV.fetch('FRONTEND_URL', nil)}/app/accounts/#{account.id}/conversations/#{conversation.display_id}" }
+
+      before do
+        allow(processor_service).to receive(:linked_issues).with(link).and_return(data: [{ 'id' => 'attachment1' }])
+      end
+
+      it 'permits an administrator without inbox membership' do
+        admin = create(:user, account: account, role: :administrator)
+        get "/api/v1/accounts/#{account.id}/integrations/linear/linked_issues",
+            params: { conversation_id: conversation.display_id }, headers: admin.create_new_auth_token, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to eq([{ 'id' => 'attachment1' }])
+      end
+
+      it 'permits a team member without inbox membership' do
+        team = create(:team, account: account)
+        create(:team_member, team: team, user: agent)
+        conversation.update!(team: team)
+
+        get "/api/v1/accounts/#{account.id}/integrations/linear/linked_issues",
+            params: { conversation_id: conversation.display_id }, headers: agent.create_new_auth_token, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to eq([{ 'id' => 'attachment1' }])
+      end
+
+      it 'does not resolve a conversation from another account' do
+        other_conversation = create(:conversation)
+        other_conversation.update!(display_id: conversation.display_id + 1)
+        expect(Integrations::Linear::ProcessorService).not_to receive(:new)
+
+        get "/api/v1/accounts/#{account.id}/integrations/linear/linked_issues",
+            params: { conversation_id: other_conversation.display_id }, headers: agent.create_new_auth_token, as: :json
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+end

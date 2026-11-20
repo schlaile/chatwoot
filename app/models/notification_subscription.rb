@@ -3,7 +3,7 @@
 # Table name: notification_subscriptions
 #
 #  id                      :bigint           not null, primary key
-#  identifier              :string
+#  identifier              :text
 #  subscription_attributes :jsonb            not null
 #  subscription_type       :integer          not null
 #  created_at              :datetime         not null
@@ -22,8 +22,9 @@ class NotificationSubscription < ApplicationRecord
 
   SUBSCRIPTION_TYPES = {
     browser_push: 1,
-    fcm: 2
+    fcm: 2,
+    apns_voip: 3
   }.freeze
 
-  enum subscription_type: SUBSCRIPTION_TYPES
+  enum :subscription_type, SUBSCRIPTION_TYPES
 end

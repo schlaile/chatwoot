@@ -1,24 +1,19 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { actions } from '../../auth';
-import * as types from '../../../mutation-types';
-import { setUser, clearCookiesOnLogout } from '../../../utils/api';
+import types from '../../../mutation-types';
+import * as APIHelpers from '../../../utils/api';
 import '../../../../routes';
 
-jest.mock('../../../../routes', () => {});
-jest.mock('../../../utils/api', () => ({
-  setUser: jest.fn(),
-  clearCookiesOnLogout: jest.fn(),
-  getHeaderExpiry: jest.fn(),
-}));
-jest.mock('js-cookie', () => ({
-  getJSON: jest.fn(),
-}));
+vi.spyOn(APIHelpers, 'setUser');
+vi.spyOn(APIHelpers, 'clearCookiesOnLogout');
+vi.spyOn(APIHelpers, 'getHeaderExpiry');
+vi.spyOn(Cookies, 'get');
 
-const commit = jest.fn();
-const dispatch = jest.fn();
+const commit = vi.fn();
+const dispatch = vi.fn();
 global.axios = axios;
-jest.mock('axios');
+vi.mock('axios');
 
 describe('#actions', () => {
   describe('#validityCheck', () => {
@@ -28,15 +23,17 @@ describe('#actions', () => {
         headers: { expiry: 581842904 },
       });
       await actions.validityCheck({ commit });
-      expect(setUser).toHaveBeenCalledTimes(1);
-      expect(commit.mock.calls).toEqual([[types.default.SET_CURRENT_USER]]);
+      expect(APIHelpers.setUser).toHaveBeenCalledTimes(1);
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER, { id: 1, name: 'John' }],
+      ]);
     });
     it('sends correct actions if API is error', async () => {
       axios.get.mockRejectedValue({
         response: { status: 401 },
       });
       await actions.validityCheck({ commit });
-      expect(clearCookiesOnLogout);
+      expect(APIHelpers.clearCookiesOnLogout);
     });
   });
 
@@ -47,30 +44,224 @@ describe('#actions', () => {
         headers: { expiry: 581842904 },
       });
       await actions.updateProfile({ commit }, { name: 'Pranav' });
-      expect(setUser).toHaveBeenCalledTimes(1);
-      expect(commit.mock.calls).toEqual([[types.default.SET_CURRENT_USER]]);
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER, { id: 1, name: 'John' }],
+      ]);
+    });
+  });
+
+  describe('#updateAvailability', () => {
+    it('sends correct actions if API is success', async () => {
+      axios.post.mockResolvedValue({
+        data: {
+          id: 1,
+          name: 'John',
+          accounts: [{ account_id: 1, availability_status: 'offline' }],
+        },
+        headers: { expiry: 581842904 },
+      });
+      await actions.updateAvailability(
+        { commit, dispatch, getters: { getCurrentUserAvailability: 'online' } },
+        { availability: 'offline', account_id: 1 }
+      );
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER_AVAILABILITY, 'offline'],
+        [
+          types.SET_CURRENT_USER,
+          {
+            id: 1,
+            name: 'John',
+            accounts: [{ account_id: 1, availability_status: 'offline' }],
+          },
+        ],
+      ]);
+      expect(dispatch.mock.calls).toEqual([
+        [
+          'agents/updateSingleAgentPresence',
+          { availabilityStatus: 'offline', id: 1 },
+        ],
+      ]);
+    });
+
+    it('sends correct actions if API is a failure', async () => {
+      axios.post.mockRejectedValue({ error: 'Authentication Failure' });
+      await actions.updateAvailability(
+        { commit, dispatch, getters: { getCurrentUserAvailability: 'online' } },
+        { availability: 'offline', account_id: 1 }
+      );
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER_AVAILABILITY, 'offline'],
+        [types.SET_CURRENT_USER_AVAILABILITY, 'online'],
+      ]);
+    });
+  });
+
+  describe('#updateAutoOffline', () => {
+    it('sends correct actions if API is success', async () => {
+      axios.post.mockResolvedValue({
+        data: {
+          id: 1,
+          name: 'John',
+          accounts: [
+            {
+              account_id: 1,
+              auto_offline: false,
+            },
+          ],
+        },
+        headers: { expiry: 581842904 },
+      });
+      await actions.updateAutoOffline(
+        { commit, dispatch, getters: { getCurrentUserAutoOffline: true } },
+        { autoOffline: false, accountId: 1 }
+      );
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER_AUTO_OFFLINE, false],
+        [
+          types.SET_CURRENT_USER,
+          {
+            id: 1,
+            name: 'John',
+            accounts: [{ account_id: 1, auto_offline: false }],
+          },
+        ],
+      ]);
+    });
+    it('sends correct actions if API is failure', async () => {
+      axios.post.mockRejectedValue({ error: 'Authentication Failure' });
+      await actions.updateAutoOffline(
+        { commit, dispatch, getters: { getCurrentUserAutoOffline: true } },
+        { autoOffline: false, accountId: 1 }
+      );
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER_AUTO_OFFLINE, false],
+        [types.SET_CURRENT_USER_AUTO_OFFLINE, true],
+      ]);
+    });
+  });
+
+  describe('#updateWorkPreferences', () => {
+    const getters = {
+      getCurrentUserAcceptsConversations: true,
+      getCurrentUserAcceptsCalls: true,
+    };
+
+    it('sends correct actions if API is success', async () => {
+      axios.post.mockResolvedValue({
+        data: {
+          id: 1,
+          name: 'John',
+          accounts: [{ id: 1, accepts_calls: false }],
+        },
+      });
+      await actions.updateWorkPreferences(
+        { commit, getters },
+        { accountId: 1, accepts_calls: false }
+      );
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER_WORK_PREFERENCES, { accepts_calls: false }],
+        [
+          types.SET_CURRENT_USER,
+          {
+            id: 1,
+            name: 'John',
+            accounts: [{ id: 1, accepts_calls: false }],
+          },
+        ],
+      ]);
+    });
+
+    it('restores the previous preferences if API is failure', async () => {
+      axios.post.mockRejectedValue({ error: 'Authentication Failure' });
+      await actions.updateWorkPreferences(
+        { commit, getters },
+        { accountId: 1, accepts_calls: false }
+      );
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER_WORK_PREFERENCES, { accepts_calls: false }],
+        [
+          types.SET_CURRENT_USER_WORK_PREFERENCES,
+          { accepts_conversations: true, accepts_calls: true },
+        ],
+      ]);
+    });
+  });
+
+  describe('#setCurrentUserWorkPreferences', () => {
+    it('commits the preferences', () => {
+      actions.setCurrentUserWorkPreferences(
+        { commit },
+        { accepts_conversations: false, accepts_calls: true }
+      );
+      expect(commit.mock.calls).toEqual([
+        [
+          types.SET_CURRENT_USER_WORK_PREFERENCES,
+          { accepts_conversations: false, accepts_calls: true },
+        ],
+      ]);
+    });
+
+    it('does nothing without preferences', () => {
+      actions.setCurrentUserWorkPreferences({ commit }, undefined);
+      expect(commit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('#updateUISettings', () => {
+    it('sends correct actions if API is success', async () => {
+      axios.put.mockResolvedValue({
+        data: {
+          id: 1,
+          name: 'John',
+          availability_status: 'offline',
+          ui_settings: { is_contact_sidebar_open: true },
+        },
+        headers: { expiry: 581842904 },
+      });
+      await actions.updateUISettings(
+        { commit, dispatch },
+        { uiSettings: { is_contact_sidebar_open: false } }
+      );
+      expect(commit.mock.calls).toEqual([
+        [
+          types.SET_CURRENT_USER_UI_SETTINGS,
+          { uiSettings: { is_contact_sidebar_open: false } },
+        ],
+        [
+          types.SET_CURRENT_USER,
+          {
+            id: 1,
+            name: 'John',
+            availability_status: 'offline',
+            ui_settings: { is_contact_sidebar_open: true },
+          },
+        ],
+      ]);
     });
   });
 
   describe('#setUser', () => {
     it('sends correct actions if user is logged in', async () => {
-      Cookies.getJSON.mockImplementation(() => true);
+      Cookies.get.mockImplementation(() => true);
       actions.setUser({ commit, dispatch });
-      expect(commit.mock.calls).toEqual([[types.default.SET_CURRENT_USER]]);
+      expect(commit.mock.calls).toEqual([]);
       expect(dispatch.mock.calls).toEqual([['validityCheck']]);
     });
 
     it('sends correct actions if user is not logged in', async () => {
-      Cookies.getJSON.mockImplementation(() => false);
+      Cookies.get.mockImplementation(() => false);
       actions.setUser({ commit, dispatch });
-      expect(commit.mock.calls).toEqual([[types.default.CLEAR_USER]]);
+      expect(commit.mock.calls).toEqual([
+        [types.CLEAR_USER],
+        [types.SET_CURRENT_USER_UI_FLAGS, { isFetching: false }],
+      ]);
       expect(dispatch).toHaveBeenCalledTimes(0);
     });
   });
 
-  describe('#setCurrentUserAvailabilityStatus', () => {
+  describe('#setCurrentUserAvailability', () => {
     it('sends correct mutations if user id is available', async () => {
-      actions.setCurrentUserAvailabilityStatus(
+      actions.setCurrentUserAvailability(
         {
           commit,
           state: { currentUser: { id: 1 } },
@@ -78,12 +269,12 @@ describe('#actions', () => {
         { 1: 'online' }
       );
       expect(commit.mock.calls).toEqual([
-        [types.default.SET_CURRENT_USER_AVAILABILITY, 'online'],
+        [types.SET_CURRENT_USER_AVAILABILITY, 'online'],
       ]);
     });
 
     it('does not send correct mutations if user id is not available', async () => {
-      actions.setCurrentUserAvailabilityStatus(
+      actions.setCurrentUserAvailability(
         {
           commit,
           state: { currentUser: { id: 1 } },
@@ -91,6 +282,33 @@ describe('#actions', () => {
         {}
       );
       expect(commit.mock.calls).toEqual([]);
+    });
+  });
+
+  describe('#setActiveAccount', () => {
+    it('sends correct mutations if account id is available', async () => {
+      actions.setActiveAccount(
+        {
+          commit,
+        },
+        { accountId: 1 }
+      );
+    });
+  });
+
+  describe('#resetAccessToken', () => {
+    it('sends correct actions if API is success', async () => {
+      const mockResponse = {
+        data: { id: 1, name: 'John', access_token: 'new_token_123' },
+        headers: { expiry: 581842904 },
+      };
+      axios.post.mockResolvedValue(mockResponse);
+      const result = await actions.resetAccessToken({ commit });
+
+      expect(commit.mock.calls).toEqual([
+        [types.SET_CURRENT_USER, mockResponse.data],
+      ]);
+      expect(result).toBe(true);
     });
   });
 });

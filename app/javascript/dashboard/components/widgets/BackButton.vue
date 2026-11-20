@@ -1,26 +1,38 @@
-<template>
-  <span class="back-button ion-ios-arrow-left" @click.capture="goBack">
-    {{ $t('GENERAL_SETTINGS.BACK') }}
-  </span>
-</template>
-<script>
+<script setup>
 import router from '../../routes/index';
+const props = defineProps({
+  backUrl: {
+    type: [String, Object],
+    default: '',
+  },
+  buttonLabel: {
+    type: String,
+    default: '',
+  },
+  compact: {
+    type: Boolean,
+    default: false,
+  },
+});
 
-export default {
-  props: {
-    backUrl: {
-      type: [String, Object],
-      default: '',
-    },
-  },
-  methods: {
-    goBack() {
-      if (this.backUrl !== '') {
-        router.push(this.backUrl);
-      } else {
-        router.go(-1);
-      }
-    },
-  },
+const goBack = () => {
+  if (props.backUrl !== '') {
+    router.push(props.backUrl);
+  } else {
+    router.go(-1);
+  }
 };
+
+const buttonStyleClass = props.compact ? 'text-sm' : 'text-base';
 </script>
+
+<template>
+  <button
+    class="flex items-center p-0 font-normal cursor-pointer text-n-slate-11"
+    :class="buttonStyleClass"
+    @click.capture="goBack"
+  >
+    <i class="i-lucide-chevron-left -ml-1 text-lg" />
+    {{ buttonLabel || $t('GENERAL_SETTINGS.BACK') }}
+  </button>
+</template>

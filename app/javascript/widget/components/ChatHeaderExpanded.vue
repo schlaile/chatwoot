@@ -1,81 +1,57 @@
-<template>
-  <header class="header-expanded">
-    <div class="header--row">
-      <img v-if="avatarUrl" class="logo" :src="avatarUrl" />
-      <header-actions :show-popout-button="showPopoutButton" />
-    </div>
-    <h2 class="title" v-html="introHeading"></h2>
-    <p class="body" v-html="introBody"></p>
-  </header>
-</template>
+<script setup>
+import HeaderActions from './HeaderActions.vue';
+import { computed } from 'vue';
+import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
 
-<script>
-import { mapGetters } from 'vuex';
-import HeaderActions from './HeaderActions';
-export default {
-  name: 'ChatHeaderExpanded',
-  components: {
-    HeaderActions,
+const props = defineProps({
+  avatarUrl: {
+    type: String,
+    default: '',
   },
-  props: {
-    avatarUrl: {
-      type: String,
-      default: '',
-    },
-    introHeading: {
-      type: String,
-      default: '',
-    },
-    introBody: {
-      type: String,
-      default: '',
-    },
-    showPopoutButton: {
-      type: Boolean,
-      default: false,
-    },
+  introHeading: {
+    type: String,
+    default: '',
   },
-  computed: {
-    ...mapGetters({
-      widgetColor: 'appConfig/getWidgetColor',
-    }),
+  introBody: {
+    type: String,
+    default: '',
   },
-};
+  showPopoutButton: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+const { formatMessage } = useMessageFormatter();
+
+const containerClasses = computed(() => [
+  props.avatarUrl ? 'justify-between' : 'justify-end',
+]);
 </script>
 
-<style scoped lang="scss">
-@import '~widget/assets/scss/variables.scss';
-@import '~widget/assets/scss/mixins.scss';
-
-.header-expanded {
-  padding: $space-large $space-medium $space-large;
-  width: 100%;
-  box-sizing: border-box;
-  position: relative;
-
-  .logo {
-    width: 56px;
-    height: 56px;
-  }
-
-  .title {
-    color: $color-heading;
-    font-size: $font-size-mega;
-    font-weight: $font-weight-normal;
-    margin-bottom: $space-slab;
-    margin-top: $space-medium;
-  }
-
-  .body {
-    color: $color-body;
-    font-size: 1.8rem;
-    line-height: 1.5;
-  }
-}
-
-.header--row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-</style>
+<template>
+  <header
+    class="header-expanded pt-6 pb-4 px-5 relative box-border w-full bg-transparent"
+  >
+    <div class="flex items-start" :class="containerClasses">
+      <img
+        v-if="avatarUrl"
+        class="h-12 rounded-full"
+        :src="avatarUrl"
+        alt="Avatar"
+      />
+      <HeaderActions
+        :show-popout-button="showPopoutButton"
+        :show-end-conversation-button="false"
+      />
+    </div>
+    <h2
+      v-dompurify-html="introHeading"
+      class="mt-4 text-2xl mb-1.5 font-medium text-n-slate-12 line-clamp-4"
+    />
+    <p
+      v-dompurify-html="formatMessage(introBody)"
+      class="text-lg leading-normal text-n-slate-11 [&_a]:underline line-clamp-6"
+    />
+  </header>
+</template>

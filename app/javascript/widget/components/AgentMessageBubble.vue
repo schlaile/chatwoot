@@ -1,79 +1,62 @@
-<template>
-  <div class="chat-bubble-wrap">
-    <div
-      v-if="!isCards && !isOptions && !isForm && !isArticle"
-      class="chat-bubble agent"
-    >
-      <span v-html="formatMessage(message, false)"></span>
-      <email-input
-        v-if="isTemplateEmail"
-        :message-id="messageId"
-        :message-content-attributes="messageContentAttributes"
-      />
-    </div>
-    <div v-if="isOptions">
-      <chat-options
-        :title="message"
-        :options="messageContentAttributes.items"
-        :hide-fields="!!messageContentAttributes.submitted_values"
-        @click="onOptionSelect"
-      >
-      </chat-options>
-    </div>
-    <chat-form
-      v-if="isForm && !messageContentAttributes.submitted_values"
-      :items="messageContentAttributes.items"
-      :button-label="messageContentAttributes.button_label"
-      :submitted-values="messageContentAttributes.submitted_values"
-      @submit="onFormSubmit"
-    >
-    </chat-form>
-    <div v-if="isCards">
-      <chat-card
-        v-for="item in messageContentAttributes.items"
-        :key="item.title"
-        :media-url="item.media_url"
-        :title="item.title"
-        :description="item.description"
-        :actions="item.actions"
-      >
-      </chat-card>
-    </div>
-    <div v-if="isArticle">
-      <chat-article :items="messageContentAttributes.items"></chat-article>
-    </div>
-  </div>
-</template>
-
 <script>
-import messageFormatterMixin from 'shared/mixins/messageFormatterMixin';
-import ChatCard from 'shared/components/ChatCard';
-import ChatForm from 'shared/components/ChatForm';
-import ChatOptions from 'shared/components/ChatOptions';
-import ChatArticle from './template/Article';
-import EmailInput from './template/EmailInput';
+import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
+import ChatCard from 'shared/components/ChatCard.vue';
+import ChatForm from 'shared/components/ChatForm.vue';
+import ChatOptions from 'shared/components/ChatOptions.vue';
+import ChatArticle from './template/Article.vue';
+import EmailInput from './template/EmailInput.vue';
+import CustomerSatisfaction from 'shared/components/CustomerSatisfaction.vue';
+import IntegrationCard from './template/IntegrationCard.vue';
+import TranslatingContent from './TranslatingContent.vue';
 
 export default {
   name: 'AgentMessageBubble',
   components: {
+    TranslatingContent,
     ChatArticle,
     ChatCard,
     ChatForm,
     ChatOptions,
     EmailInput,
+    CustomerSatisfaction,
+    IntegrationCard,
   },
-  mixins: [messageFormatterMixin],
   props: {
-    message: String,
-    contentType: String,
-    messageType: Number,
-    messageId: Number,
+    message: { type: String, default: null },
+    translating: { type: Boolean, default: false },
+    translated: { type: Boolean, default: false },
+    contentType: { type: String, default: null },
+    messageType: { type: Number, default: null },
+    messageId: { type: Number, default: null },
     messageContentAttributes: {
       type: Object,
       default: () => {},
     },
   },
+  setup() {
+    const { formatMessage, getPlainText, truncateMessage, highlightContent } =
+      useMessageFormatter();
+    return {
+      formatMessage,
+      getPlainText,
+      truncateMessage,
+      highlightContent,
+    };
+  },
+  data() {
+    return { showingOriginal: false };
+  },
   computed: {
+    originalText() {
+      const translations = this.messageContentAttributes?.translations || {};
+      return Object.values(translations)[0] || '';
+    },
+    hasOriginal() {
+      return this.translated && !this.translating && !!this.originalText;
+    },
+    displayedMessage() {
+      return this.showingOriginal ? this.originalText : this.message;
+    },
     isTemplate() {
       return this.messageType === 3;
     },
@@ -91,6 +74,12 @@ export default {
     },
     isArticle() {
       return this.contentType === 'article';
+    },
+    isCSAT() {
+      return this.contentType === 'input_csat';
+    },
+    isIntegrations() {
+      return this.contentType === 'integrations';
     },
   },
   methods: {
@@ -117,19 +106,76 @@ export default {
 };
 </script>
 
-<style lang="scss">
-@import '~widget/assets/scss/variables.scss';
+<template>
+  <div class="chat-bubble-wrap">
+    <div
+      v-if="
+        !isCards && !isOptions && !isForm && !isArticle && !isCards && !isCSAT
+      "
+      class="chat-bubble agent bg-n-background dark:bg-n-solid-3 text-n-slate-12"
+    >
+      <TranslatingContent :translating="translating" :translated="hasOriginal">
+        <div
+          v-dompurify-html="formatMessage(displayedMessage, false)"
+          class="message-content text-n-slate-12 [&>ul:not(:last-child)]:mb-4 [&>ol:not(:last-child)]:mb-4"
+        />
+      </TranslatingContent>
+      <button
+        v-if="hasOriginal"
+        type="button"
+        class="mt-1 flex items-center gap-1 text-xs text-n-iris-11"
+        @click="showingOriginal = !showingOriginal"
+      >
+        <span class="i-lucide-sparkles size-3" aria-hidden="true" />
+        <template v-if="showingOriginal">{{ $t('VIEW_TRANSLATION') }}</template>
+        <template v-else>{{ $t('VIEW_ORIGINAL') }}</template>
+      </button>
+      <EmailInput
+        v-if="isTemplateEmail"
+        :message-id="messageId"
+        :message-content-attributes="messageContentAttributes"
+      />
 
-.chat-bubble {
-  &.agent {
-    background: $color-white;
-    border-bottom-left-radius: $space-smaller;
-    color: $color-body;
-
-    .link {
-      word-break: break-word;
-      color: $color-woot;
-    }
-  }
-}
-</style>
+      <IntegrationCard
+        v-if="isIntegrations"
+        :message-id="messageId"
+        :meeting-data="messageContentAttributes.data"
+      />
+    </div>
+    <div v-if="isOptions">
+      <ChatOptions
+        :title="message"
+        :options="messageContentAttributes.items"
+        :hide-fields="!!messageContentAttributes.submitted_values"
+        @option-select="onOptionSelect"
+      />
+    </div>
+    <ChatForm
+      v-if="isForm && !messageContentAttributes.submitted_values"
+      :items="messageContentAttributes.items"
+      :button-label="messageContentAttributes.button_label"
+      :submitted-values="messageContentAttributes.submitted_values"
+      @submit="onFormSubmit"
+    />
+    <div v-if="isCards">
+      <ChatCard
+        v-for="item in messageContentAttributes.items"
+        :key="item.title"
+        :media-url="item.media_url"
+        :title="item.title"
+        :description="item.description"
+        :actions="item.actions"
+      />
+    </div>
+    <div v-if="isArticle">
+      <ChatArticle :items="messageContentAttributes.items" />
+    </div>
+    <CustomerSatisfaction
+      v-if="isCSAT"
+      :message-content-attributes="messageContentAttributes.submitted_values"
+      :display-type="messageContentAttributes.display_type"
+      :message="message"
+      :message-id="messageId"
+    />
+  </div>
+</template>

@@ -1,102 +1,127 @@
 {
   "AGENT_MGMT": {
-    "HEADER": "Agents",
-    "HEADER_BTN_TXT": "Add Agent",
-    "LOADING": "Fetching Agent List",
-    "SIDEBAR_TXT": "<p><b>Agents</b></p> <p> An <b>Agent</b> is a member of your Customer Support team. </p><p> Agents will be able to view and reply to messages from your users. The list shows all agents currently in your account. </p><p> Click on <b>Add Agent</b> to add a new agent. Agent you add will receive an email with a confirmation link to activate their account, after which they can access Chatwoot and respond to messages. </p><p> Access to Chatwoot's features are based on following roles. </p><p> <b>Agent</b> - Agents with this role can only access inboxes, reports and conversations. They can assign conversations to other agents or themselves and resolve conversations.</p><p> <b>Administrator</b> - Administrator will have access to all Chatwoot features enabled for your account, including settings, along with all of a normal agents' privileges.</p>",
-    "AGENT_TYPES": [
-      {
-        "name": "administrator",
-        "label": "Administrator"
-      },
-      {
-        "name": "agent",
-        "label": "Agent"
-      }
-    ],
+    "HEADER": "客服",
+    "HEADER_BTN_TXT": "新增客服",
+    "LOADING": "正在取得客服列表",
+    "DESCRIPTION": "客服是您客戶支援團隊的成員，可以查看和回覆使用者訊息。以下列表顯示了您帳戶中的所有客服。",
+    "LEARN_MORE": "瞭解使用者角色",
+    "AGENT_TYPES": {
+      "ADMINISTRATOR": "管理員",
+      "AGENT": "客服"
+    },
+    "COUNT": "{n} 位客服 | {n} 位客服",
     "LIST": {
-      "404": "There are no agents associated to this account",
-      "TITLE": "Manage agents in your team",
-      "DESC": "You can add/remove agents to/in your team.",
-      "NAME": "Name",
-      "EMAIL": "EMAIL",
-      "STATUS": "Status",
-      "ACTIONS": "Actions",
-      "VERIFIED": "Verified",
-      "VERIFICATION_PENDING": "Verification Pending"
+      "404": "沒有與此帳戶關聯的客服",
+      "TITLE": "管理您團隊中的客服",
+      "DESC": "您可以新增或移除團隊中的客服。",
+      "NAME": "名稱",
+      "EMAIL": "電子郵件",
+      "STATUS": "狀態",
+      "ACTIONS": "操作",
+      "VERIFIED": "已認證",
+      "VERIFICATION_PENDING": "待驗證",
+      "AVAILABLE_CUSTOM_ROLE": "可用的自訂角色權限"
     },
     "ADD": {
-      "TITLE": "Add agent to your team",
-      "DESC": "You can add people who will be able to handle support for your inboxes.",
-      "CANCEL_BUTTON_TEXT": "Cancel",
+      "TITLE": "新增客服到您的團隊",
+      "DESC": "您可以新增能夠處理收件匣支援的人員。",
+      "CANCEL_BUTTON_TEXT": "取消",
       "FORM": {
         "NAME": {
-          "LABEL": "Agent Name",
-          "PLACEHOLDER": "Please enter a name of the agent"
+          "LABEL": "客服名稱",
+          "PLACEHOLDER": "請輸入客服名稱"
         },
         "AGENT_TYPE": {
-          "LABEL": "Agent Type",
-          "PLACEHOLDER": "Please select a type",
-          "ERROR": "Agent type is required"
+          "LABEL": "角色",
+          "PLACEHOLDER": "請選擇一個角色",
+          "ERROR": "角色為必填"
         },
         "EMAIL": {
-          "LABEL": "Email Address",
-          "PLACEHOLDER": "Please enter an email address of the agent"
+          "LABEL": "電子郵件地址",
+          "PLACEHOLDER": "請輸入客服的電子郵件地址"
         },
-        "SUBMIT": "Add Agent"
+        "SUBMIT": "新增客服"
       },
       "API": {
-        "SUCCESS_MESSAGE": "Agent added successfully",
-        "EXIST_MESSAGE": "Agent email already in use, Please try another email address",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "SUCCESS_MESSAGE": "客服新增成功",
+        "EXIST_MESSAGE": "該電子郵件已被使用，請嘗試其他電子郵件地址",
+        "ERROR_MESSAGE": "無法連接伺服器，請稍後再試"
       }
     },
     "DELETE": {
-      "BUTTON_TEXT": "Delete",
+      "BUTTON_TEXT": "刪除",
       "API": {
-        "SUCCESS_MESSAGE": "Agent deleted successfully",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "SUCCESS_MESSAGE": "客服刪除成功",
+        "ERROR_MESSAGE": "無法連接伺服器，請稍後再試"
       },
       "CONFIRM": {
-        "TITLE": "Confirm Deletion",
-        "MESSAGE": "Are you sure to delete ",
-        "YES": "Yes, Delete ",
-        "NO": "No, Keep "
+        "TITLE": "確認刪除",
+        "MESSAGE": "您確定要刪除嗎？",
+        "YES": "是，刪除 ",
+        "NO": "不，保留 "
       }
     },
     "EDIT": {
-      "TITLE": "Edit agent",
+      "TITLE": "編輯客服",
       "FORM": {
         "NAME": {
-          "LABEL": "Agent Name",
-          "PLACEHOLDER": "Please enter a name of the agent"
+          "LABEL": "客服名稱",
+          "PLACEHOLDER": "請輸入客服名稱"
         },
         "AGENT_TYPE": {
-          "LABEL": "Agent Type",
-          "PLACEHOLDER": "Please select a type",
-          "ERROR": "Agent type is required"
+          "LABEL": "角色",
+          "PLACEHOLDER": "請選擇一個角色",
+          "ERROR": "角色為必填"
         },
         "EMAIL": {
-          "LABEL": "Email Address",
-          "PLACEHOLDER": "Please enter an email address of the agent"
+          "LABEL": "電子郵件地址",
+          "PLACEHOLDER": "請輸入客服的電子郵件地址"
         },
-        "SUBMIT": "Edit Agent"
+        "AGENT_AVAILABILITY": {
+          "LABEL": "上線狀態",
+          "PLACEHOLDER": "請選擇上線狀態",
+          "ERROR": "上線狀態為必填"
+        },
+        "SUBMIT": "編輯客服"
       },
-      "BUTTON_TEXT": "Edit",
-      "CANCEL_BUTTON_TEXT": "Cancel",
+      "BUTTON_TEXT": "編輯",
+      "CANCEL_BUTTON_TEXT": "取消",
       "API": {
-        "SUCCESS_MESSAGE": "Agent updated successfully",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "SUCCESS_MESSAGE": "更新客服資訊成功",
+        "ERROR_MESSAGE": "無法連接伺服器，請稍後再試"
       },
       "PASSWORD_RESET": {
-        "ADMIN_RESET_BUTTON": "Reset Password",
-        "ADMIN_SUCCESS_MESSAGE": "An email with reset password instructions has been sent to the agent",
-        "SUCCESS_MESSAGE": "Agent password reset successfully",
-        "ERROR_MESSAGE": "Could not connect to Woot Server, Please try again later"
+        "ADMIN_RESET_BUTTON": "重置密碼",
+        "ADMIN_SUCCESS_MESSAGE": "一封包含重設密碼說明的電子郵件已傳送給客服",
+        "SUCCESS_MESSAGE": "客服密碼重設成功",
+        "ERROR_MESSAGE": "無法連接伺服器，請稍後再試"
       }
     },
+    "SEARCH_PLACEHOLDER": "搜尋客服...",
+    "NO_RESULTS": "找不到符合搜尋條件的客服",
     "SEARCH": {
-      "NO_RESULTS": "No agents found."
+      "NO_RESULTS": "查無結果。"
+    },
+    "MULTI_SELECTOR": {
+      "PLACEHOLDER": "無",
+      "TITLE": {
+        "AGENT": "選擇客服",
+        "TEAM": "選擇團隊"
+      },
+      "LIST": {
+        "NONE": "無"
+      },
+      "SEARCH": {
+        "NO_RESULTS": {
+          "AGENT": "找不到客服",
+          "TEAM": "找不到團隊"
+        },
+        "PLACEHOLDER": {
+          "AGENT": "搜尋客服",
+          "TEAM": "搜尋團隊",
+          "INPUT": "搜尋客服"
+        }
+      }
     }
   }
 }

@@ -1,23 +1,11 @@
-<template>
-  <div
-    class="chat-bubble user"
-    :style="{ background: widgetColor }"
-    v-html="formatMessage(message, false)"
-  />
-</template>
-
 <script>
-import messageFormatterMixin from 'shared/mixins/messageFormatterMixin';
+import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
+import { getContrastingTextColor } from '@chatwoot/utils';
 
 export default {
   name: 'UserMessageBubble',
-  mixins: [messageFormatterMixin],
   props: {
     message: {
-      type: String,
-      default: '',
-    },
-    status: {
       type: String,
       default: '',
     },
@@ -26,35 +14,47 @@ export default {
       default: '',
     },
   },
+  setup() {
+    const { formatMessage } = useMessageFormatter();
+    return {
+      formatMessage,
+    };
+  },
+  computed: {
+    textColor() {
+      return getContrastingTextColor(this.widgetColor);
+    },
+  },
 };
 </script>
 
-<style lang="scss">
-@import '~widget/assets/scss/variables.scss';
-@import '~widget/assets/scss/mixins.scss';
+<template>
+  <div
+    v-dompurify-html="formatMessage(message, false)"
+    class="chat-bubble user message-content"
+    :style="{ background: widgetColor, color: textColor }"
+  />
+</template>
 
-.chat-bubble {
-  @include light-shadow;
-  background: $color-woot;
-  border-radius: $space-two;
-  color: $color-white;
-  display: inline-block;
-  font-size: $font-size-default;
-  line-height: 1.5;
-  padding: $space-slab $space-normal $space-slab $space-normal;
-  text-align: left;
-  word-break: break-word;
-
-  > a {
-    color: $color-primary;
-    word-break: break-all;
+<style lang="scss" scoped>
+.chat-bubble.user {
+  :deep(p code) {
+    @apply bg-n-alpha-2 dark:bg-n-alpha-1 text-white;
   }
 
-  &.user {
-    border-bottom-right-radius: $space-smaller;
+  :deep(pre) {
+    @apply text-white bg-n-alpha-2 dark:bg-n-alpha-1;
 
-    > a {
-      color: $color-white;
+    code {
+      @apply bg-transparent text-white;
+    }
+  }
+
+  :deep(blockquote) {
+    @apply bg-transparent border-n-slate-7 ltr:border-l-2 rtl:border-r-2 border-solid;
+
+    p {
+      @apply text-n-slate-5 dark:text-n-slate-12/90;
     }
   }
 }

@@ -1,82 +1,126 @@
-<template>
-  <div
-    class="small-3 columns channel"
-    :class="{ inactive: !isActive }"
-    @click="onItemClick"
-  >
-    <img
-      v-if="channel.key === 'facebook'"
-      src="~dashboard/assets/images/channels/facebook.png"
-    />
-    <img
-      v-if="channel.key === 'twitter'"
-      src="~dashboard/assets/images/channels/twitter.png"
-    />
-    <img
-      v-if="channel.key === 'telegram'"
-      src="~dashboard/assets/images/channels/telegram.png"
-    />
-    <img
-      v-if="channel.key === 'api'"
-      src="~dashboard/assets/images/channels/api.png"
-    />
-    <img
-      v-if="channel.key === 'email'"
-      src="~dashboard/assets/images/channels/email.png"
-    />
-    <img
-      v-if="channel.key === 'line'"
-      src="~dashboard/assets/images/channels/line.png"
-    />
-    <img
-      v-if="channel.key === 'website'"
-      src="~dashboard/assets/images/channels/website.png"
-    />
-    <img
-      v-if="channel.key === 'twilio'"
-      src="~dashboard/assets/images/channels/twilio.png"
-    />
-    <h3 class="channel__title">
-      {{ channel.name }}
-    </h3>
-  </div>
-</template>
-<script>
-export default {
-  props: {
-    channel: {
-      type: Object,
-      required: true,
-    },
-    enabledFeatures: {
-      type: Object,
-      required: true,
-    },
+<script setup>
+import { computed } from 'vue';
+import { useAccount } from 'dashboard/composables/useAccount';
+import ChannelSelector from '../ChannelSelector.vue';
+
+const props = defineProps({
+  channel: {
+    type: Object,
+    required: true,
   },
-  computed: {
-    isActive() {
-      const { key } = this.channel;
-      if (Object.keys(this.enabledFeatures) === 0) {
-        return false;
-      }
-      if (key === 'facebook') {
-        return this.enabledFeatures.channel_facebook;
-      }
-      if (key === 'twitter') {
-        return this.enabledFeatures.channel_twitter;
-      }
-      if (key === 'email') {
-        return this.enabledFeatures.channel_email;
-      }
-      return ['website', 'twilio', 'api'].includes(key);
-    },
+  enabledFeatures: {
+    type: Object,
+    required: true,
   },
-  methods: {
-    onItemClick() {
-      if (this.isActive) {
-        this.$emit('channel-item-click', this.channel.key);
-      }
-    },
-  },
+});
+
+const emit = defineEmits(['channelItemClick']);
+const { isOnChatwootCloud } = useAccount();
+
+const hasFbConfigured = computed(() => {
+  return window.chatwootConfig?.fbAppId;
+});
+
+const hasInstagramConfigured = computed(() => {
+  return window.chatwootConfig?.instagramAppId;
+});
+
+const hasTiktokConfigured = computed(() => {
+  return window.chatwootConfig?.tiktokAppId;
+});
+
+const isActive = computed(() => {
+  const { key } = props.channel;
+  if (Object.keys(props.enabledFeatures).length === 0) {
+    return false;
+  }
+  if (key === 'website') {
+    return props.enabledFeatures.channel_website;
+  }
+  if (key === 'facebook') {
+    return props.enabledFeatures.channel_facebook && hasFbConfigured.value;
+  }
+  if (key === 'email') {
+    return props.enabledFeatures.channel_email;
+  }
+
+  if (key === 'instagram') {
+    return (
+      props.enabledFeatures.channel_instagram && hasInstagramConfigured.value
+    );
+  }
+
+  if (key === 'tiktok') {
+    return props.enabledFeatures.channel_tiktok && hasTiktokConfigured.value;
+  }
+
+  if (key === 'voice' || key === 'whatsapp_call') {
+    return props.enabledFeatures.channel_voice;
+  }
+
+  return [
+    'website',
+    'twilio',
+    'api',
+    'whatsapp',
+    'sms',
+    'telegram',
+    'line',
+    'instagram',
+    'tiktok',
+    'voice',
+  ].includes(key);
+});
+
+const isComingSoon = computed(() => {
+  const { key } = props.channel;
+  // Show "Coming Soon" only if the channel is marked as coming soon
+  // and the corresponding feature flag is not enabled yet.
+  return ['voice'].includes(key) && !isActive.value;
+});
+
+const isBeta = computed(() => {
+  return ['tiktok', 'voice', 'whatsapp_call'].includes(props.channel.key);
+});
+
+const canRequestTiktokAccess = computed(() => {
+  return (
+    props.channel.key === 'tiktok' &&
+    isOnChatwootCloud.value &&
+    hasTiktokConfigured.value &&
+    Object.keys(props.enabledFeatures).length > 0 &&
+    !props.enabledFeatures.channel_tiktok
+  );
+});
+
+const hasVoiceBadge = computed(() => {
+  return (
+    ['voice', 'whatsapp_call'].includes(props.channel.key) &&
+    !!props.enabledFeatures.channel_voice
+  );
+});
+
+const onItemClick = () => {
+  if (canRequestTiktokAccess.value) {
+    window.$chatwoot?.toggle();
+    return;
+  }
+
+  if (isActive.value) {
+    emit('channelItemClick', props.channel.key);
+  }
 };
 </script>
+
+<template>
+  <ChannelSelector
+    :title="channel.title"
+    :description="channel.description"
+    :icon="channel.icon"
+    :is-coming-soon="isComingSoon"
+    :is-beta="isBeta"
+    :has-voice-badge="hasVoiceBadge"
+    :disabled="!isActive && !canRequestTiktokAccess"
+    @click="onItemClick"
+  />
+</template>

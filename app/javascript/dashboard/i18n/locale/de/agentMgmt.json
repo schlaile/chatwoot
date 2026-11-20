@@ -3,17 +3,13 @@
     "HEADER": "Agenten",
     "HEADER_BTN_TXT": "Agent hinzufügen",
     "LOADING": "Agentenliste abrufen",
-    "SIDEBAR_TXT": "<p><b>Agenten</b></p> <p> Ein <b>Agent</b> ist ein Mitglied Ihres Kundensupport-Teams. </p><p> Agenten können Nachrichten von Ihren Benutzern einsehen und beantworten. Die Liste zeigt alle Agenten, die sich derzeit in Ihrem Konto befinden. </p><p> Klicken Sie auf <b>Agent hinzufügen</b>, um einen neuen Agenten hinzuzufügen. Der von Ihnen hinzugefügte Agent erhält eine E-Mail mit einem Bestätigungslink, um sein Konto zu aktivieren. Danach können sie auf Chatwoot zugreifen und auf Nachrichten antworten. </p><p> Der Zugang zu den Funktionen von Chatwoot basiert auf folgenden Rollen: </p><p> <b>Agent</b> - Agenten mit dieser Rolle können nur auf Posteingänge, Berichte und Konversationen zugreifen. Sie können Unterhaltungen anderen Agenten oder sich selbst zuweisen und Unterhaltungen lösen.</p><p> <b>Administrator</b> - Der Administrator hat Zugang zu allen Chatwoot-Funktionen, die für Ihr Konto aktiviert sind, einschließlich der Einstellungen, zusammen mit allen normalen Agentenrechten.</p>",
-    "AGENT_TYPES": [
-      {
-        "name": "administrator",
-        "label": "Administrator"
-      },
-      {
-        "name": "agent",
-        "label": "Agent"
-      }
-    ],
+    "DESCRIPTION": "Ein Agent ist ein Mitglied Ihres Kundensupport-Teams, das Nachrichten von Benutzern einsehen und beantworten kann. Die folgende Liste zeigt alle Agenten in Ihrem Konto.",
+    "LEARN_MORE": "Lernen Sie mehr über Benutzerrollen",
+    "AGENT_TYPES": {
+      "ADMINISTRATOR": "Administrator",
+      "AGENT": "Agent"
+    },
+    "COUNT": "{n} agent | {n} agents",
     "LIST": {
       "404": "Diesem Konto sind keine Agenten zugeordnet",
       "TITLE": "Verwalten Sie Agenten in Ihrem Team",
@@ -23,7 +19,8 @@
       "STATUS": "Status",
       "ACTIONS": "Aktionen",
       "VERIFIED": "Verifiziert",
-      "VERIFICATION_PENDING": "Überprüfung ausstehend"
+      "VERIFICATION_PENDING": "Überprüfung ausstehend",
+      "AVAILABLE_CUSTOM_ROLE": "Verfügbare Berechtigungen der benutzerdefinierten Rolle"
     },
     "ADD": {
       "TITLE": "Fügen Sie Ihrem Team einen Agenten hinzu",
@@ -59,7 +56,7 @@
       },
       "CONFIRM": {
         "TITLE": "Löschung bestätigen",
-        "MESSAGE": "Sind Sie sicher, dass Sie das löschen wollen?",
+        "MESSAGE": "Bist du sicher, das du das löschen möchtest?",
         "YES": "Ja, löschen ",
         "NO": "Nein, behalten "
       }
@@ -80,6 +77,11 @@
           "LABEL": "E-Mail-Addresse",
           "PLACEHOLDER": "Bitte geben Sie eine E-Mail-Adresse des Agenten ein"
         },
+        "AGENT_AVAILABILITY": {
+          "LABEL": "Verfügbarkeit",
+          "PLACEHOLDER": "Bitte wählen Sie Ihre Verfügbarkeit aus",
+          "ERROR": "Verfügbarkeit ist erforderlich"
+        },
         "SUBMIT": "Agent bearbeiten"
       },
       "BUTTON_TEXT": "Bearbeiten",
@@ -95,8 +97,31 @@
         "ERROR_MESSAGE": "Es konnte keine Verbindung zum Woot Server hergestellt werden. Bitte versuchen Sie es später erneut"
       }
     },
+    "SEARCH_PLACEHOLDER": "Agenten suchen...",
+    "NO_RESULTS": "No agents found matching your search",
     "SEARCH": {
-      "NO_RESULTS": "Keine Agenten gefunden."
+      "NO_RESULTS": "Keine Ergebnisse gefunden."
+    },
+    "MULTI_SELECTOR": {
+      "PLACEHOLDER": "Keine",
+      "TITLE": {
+        "AGENT": "Agent auswählen",
+        "TEAM": "Team auswählen"
+      },
+      "LIST": {
+        "NONE": "Keine"
+      },
+      "SEARCH": {
+        "NO_RESULTS": {
+          "AGENT": "Keine Agenten gefunden",
+          "TEAM": "Keine Teams gefunden"
+        },
+        "PLACEHOLDER": {
+          "AGENT": "Agenten suchen",
+          "TEAM": "Teams suchen",
+          "INPUT": "Nach Agenten suchen"
+        }
+      }
     }
   }
 }

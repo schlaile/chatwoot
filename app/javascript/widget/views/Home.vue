@@ -1,161 +1,47 @@
-<template>
-  <div class="home">
-    <div class="header-wrap">
-      <ChatHeaderExpanded
-        v-if="isHeaderExpanded && !hideWelcomeHeader"
-        :intro-heading="introHeading"
-        :intro-body="introBody"
-        :avatar-url="channelConfig.avatarUrl"
-        :show-popout-button="showPopoutButton"
-      />
-      <ChatHeader
-        v-else
-        :title="channelConfig.websiteName"
-        :avatar-url="channelConfig.avatarUrl"
-        :show-popout-button="showPopoutButton"
-      />
-    </div>
-    <AvailableAgents v-if="showAvailableAgents" :agents="availableAgents" />
-    <ConversationWrap :grouped-messages="groupedMessages" />
-    <div class="footer-wrap">
-      <div v-if="showInputTextArea" class="input-wrap">
-        <ChatFooter />
-      </div>
-      <branding></branding>
-    </div>
-  </div>
-</template>
-
 <script>
-import Branding from 'widget/components/Branding.vue';
-import ChatFooter from 'widget/components/ChatFooter.vue';
-import ChatHeaderExpanded from 'widget/components/ChatHeaderExpanded.vue';
-import ChatHeader from 'widget/components/ChatHeader.vue';
-import ConversationWrap from 'widget/components/ConversationWrap.vue';
-import AvailableAgents from 'widget/components/AvailableAgents.vue';
-import configMixin from '../mixins/configMixin';
-
+import TeamAvailability from 'widget/components/TeamAvailability.vue';
+import { mapGetters } from 'vuex';
+import { useRouter } from 'vue-router';
+import configMixin from 'widget/mixins/configMixin';
+import ArticleContainer from '../components/pageComponents/Home/Article/ArticleContainer.vue';
 export default {
   name: 'Home',
   components: {
-    ChatFooter,
-    ChatHeaderExpanded,
-    ConversationWrap,
-    ChatHeader,
-    Branding,
-    AvailableAgents,
+    ArticleContainer,
+    TeamAvailability,
   },
   mixins: [configMixin],
-  props: {
-    groupedMessages: {
-      type: Array,
-      default: () => [],
-    },
-    conversationSize: {
-      type: Number,
-      default: 0,
-    },
-    availableAgents: {
-      type: Array,
-      default: () => [],
-    },
-    hasFetched: {
-      type: Boolean,
-      default: false,
-    },
-    conversationAttributes: {
-      type: Object,
-      default: () => {},
-    },
-    unreadMessageCount: {
-      type: Number,
-      default: 0,
-    },
-    showPopoutButton: {
-      type: Boolean,
-      default: false,
-    },
+  setup() {
+    const router = useRouter();
+    return { router };
   },
   computed: {
-    isOpen() {
-      return this.conversationAttributes.status === 'open';
-    },
-    showInputTextArea() {
-      if (this.hideInputForBotConversations) {
-        if (this.isOpen) {
-          return true;
-        }
-        return false;
+    ...mapGetters({
+      availableAgents: 'agent/availableAgents',
+      conversationSize: 'conversation/getConversationSize',
+      unreadMessageCount: 'conversation/getUnreadMessageCount',
+    }),
+  },
+  methods: {
+    startConversation() {
+      if (this.preChatFormEnabled && !this.conversationSize) {
+        return this.router.replace({ name: 'prechat-form' });
       }
-      return true;
-    },
-    isHeaderExpanded() {
-      return this.conversationSize === 0;
-    },
-    showAvailableAgents() {
-      return this.availableAgents.length > 0 && this.conversationSize < 1;
-    },
-    introHeading() {
-      return this.channelConfig.welcomeTitle;
-    },
-    introBody() {
-      return this.channelConfig.welcomeTagline;
-    },
-    hideWelcomeHeader() {
-      return !(this.introHeading || this.introBody);
+      return this.router.replace({ name: 'messages' });
     },
   },
 };
 </script>
 
-<style scoped lang="scss">
-@import '~widget/assets/scss/woot.scss';
+<template>
+  <div class="z-50 flex flex-col justify-end flex-1 w-full p-4 gap-4">
+    <TeamAvailability
+      :available-agents="availableAgents"
+      :has-conversation="!!conversationSize"
+      :unread-count="unreadMessageCount"
+      @start-conversation="startConversation"
+    />
 
-.home {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  background: $color-background;
-
-  .header-wrap {
-    flex-shrink: 0;
-    border-radius: $space-normal $space-normal $space-small $space-small;
-    background: white;
-    z-index: 99;
-    @include shadow-large;
-
-    @media only screen and (min-device-width: 320px) and (max-device-width: 667px) {
-      border-radius: 0;
-    }
-  }
-
-  .footer-wrap {
-    flex-shrink: 0;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-
-    &:before {
-      content: '';
-      position: absolute;
-      top: -$space-normal;
-      left: 0;
-      width: 100%;
-      height: $space-normal;
-      opacity: 0.1;
-      background: linear-gradient(
-        to top,
-        $color-background,
-        rgba($color-background, 0)
-      );
-    }
-  }
-
-  .input-wrap {
-    padding: 0 $space-normal;
-  }
-}
-</style>
+    <ArticleContainer />
+  </div>
+</template>

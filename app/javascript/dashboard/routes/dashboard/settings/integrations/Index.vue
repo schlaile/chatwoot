@@ -1,42 +1,102 @@
+<script setup>
+import { useStoreGetters, useStore } from 'dashboard/composables/store';
+import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import { useBranding } from 'shared/composables/useBranding';
+import { useAccount } from 'dashboard/composables/useAccount';
+import {
+  usePageCommands,
+  recordCommands,
+} from 'dashboard/modules/command-bar/composables/usePageCommands';
+import { frontendURL } from 'dashboard/helper/URLHelper';
+import { picoSearch } from '@chatwoot/pico-search';
+import IntegrationItem from './IntegrationItem.vue';
+import SettingsLayout from '../SettingsLayout.vue';
+import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
+
+const store = useStore();
+const getters = useStoreGetters();
+const { replaceInstallationName } = useBranding();
+
+const searchQuery = ref('');
+const uiFlags = getters['integrations/getUIFlags'];
+
+const integrationList = computed(
+  () => getters['integrations/getAppIntegrations'].value
+);
+
+const filteredIntegrationList = computed(() => {
+  const query = searchQuery.value.trim();
+  if (!query) return integrationList.value;
+  return picoSearch(integrationList.value, query, ['name', 'description']);
+});
+
+onMounted(() => {
+  store.dispatch('integrations/get');
+});
+
+const { t } = useI18n();
+const router = useRouter();
+const { accountId } = useAccount();
+
+usePageCommands(() =>
+  recordCommands({
+    id: 'configure_integration',
+    title: t('INTEGRATION_APPS.CONFIGURE'),
+    icon: 'i-lucide-settings-2',
+    records: integrationList.value,
+    label: integration => integration.name,
+    run: integration =>
+      router.push(
+        frontendURL(
+          `accounts/${accountId.value}/settings/integrations/${integration.id}`
+        )
+      ),
+  })
+);
+</script>
+
 <template>
-  <div class="column content-box">
-    <div class="row">
-      <div class="small-12 columns integrations-wrap">
-        <div class="row integrations">
-          <div
-            v-for="item in integrationsList"
+  <SettingsLayout
+    :is-loading="uiFlags.isFetching"
+    :loading-message="$t('INTEGRATION_SETTINGS.LOADING')"
+  >
+    <template #header>
+      <BaseSettingsHeader
+        v-model:search-query="searchQuery"
+        :title="$t('INTEGRATION_SETTINGS.HEADER')"
+        :description="
+          replaceInstallationName($t('INTEGRATION_SETTINGS.DESCRIPTION'))
+        "
+        :link-text="$t('INTEGRATION_SETTINGS.LEARN_MORE')"
+        :search-placeholder="$t('INTEGRATION_SETTINGS.SEARCH_PLACEHOLDER')"
+        feature-name="integrations"
+      />
+    </template>
+    <template #body>
+      <div class="flex-grow flex-shrink overflow-auto">
+        <span
+          v-if="!filteredIntegrationList.length && searchQuery"
+          class="flex-1 flex items-center justify-center py-20 text-center text-body-main !text-base text-n-slate-11"
+        >
+          {{ $t('INTEGRATION_SETTINGS.NO_RESULTS') }}
+        </span>
+        <div
+          v-else
+          class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+        >
+          <IntegrationItem
+            v-for="item in filteredIntegrationList"
+            :id="item.id"
             :key="item.id"
-            class="small-12 columns integration"
-          >
-            <integration
-              :integration-id="item.id"
-              :integration-logo="item.logo"
-              :integration-name="item.name"
-              :integration-description="item.description"
-              :integration-enabled="item.enabled"
-              :integration-action="item.action"
-            />
-          </div>
+            :logo="item.logo"
+            :name="item.name"
+            :description="item.description"
+            :enabled="item.enabled"
+          />
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </SettingsLayout>
 </template>
-<script>
-import { mapGetters } from 'vuex';
-import Integration from './Integration';
-
-export default {
-  components: {
-    Integration,
-  },
-  computed: {
-    ...mapGetters({
-      integrationsList: 'integrations/getIntegrations',
-    }),
-  },
-  mounted() {
-    this.$store.dispatch('integrations/get');
-  },
-};
-</script>

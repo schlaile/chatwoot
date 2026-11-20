@@ -1,4 +1,5 @@
 class Api::V1::Accounts::CallbacksController < Api::V1::Accounts::BaseController
+  before_action :check_admin_authorization?
   before_action :inbox, only: [:reauthorize_page]
 
   def register_facebook_page
@@ -6,20 +7,39 @@ class Api::V1::Accounts::CallbacksController < Api::V1::Accounts::BaseController
     page_access_token = params[:page_access_token]
     page_id = params[:page_id]
     inbox_name = params[:inbox_name]
+
     ActiveRecord::Base.transaction do
       facebook_channel = Current.account.facebook_pages.create!(
         page_id: page_id, user_access_token: user_access_token,
         page_access_token: page_access_token
       )
       @facebook_inbox = Current.account.inboxes.create!(name: inbox_name, channel: facebook_channel)
+      sync_page_details(page_access_token, facebook_channel)
       set_avatar(@facebook_inbox, page_id)
-    rescue StandardError => e
-      Rails.logger.info e
     end
+  rescue CustomExceptions::Inbox::LimitExceeded => e
+    render_error_response(e)
+  rescue StandardError => e
+    ChatwootExceptionTracker.new(e).capture_exception
+    Rails.logger.error "Error in register_facebook_page: #{e.message}"
   end
 
   def facebook_pages
-    @page_details = mark_already_existing_facebook_pages(fb_object.get_connections('me', 'accounts'))
+    pages = []
+    fb_pages = fb_object.get_connections('me', 'accounts')
+    pages.concat(fb_pages)
+    while fb_pages.respond_to?(:next_page) && (next_page = fb_pages.next_page)
+      fb_pages = next_page
+      pages.concat(fb_pages)
+    end
+    @page_details = mark_already_existing_facebook_pages(pages)
+  end
+
+  def sync_page_details(page_access_token, facebook_channel)
+    page_details = Facebook::PageDetailsService.new(access_token: page_access_token).perform
+    facebook_channel.update(page_details.compact)
+  rescue StandardError => e
+    Rails.logger.error "Error in sync_page_details: #{e.message}"
   end
 
   # get params[:inbox_id], current_account. params[:omniauth_token]
@@ -30,7 +50,7 @@ class Api::V1::Accounts::CallbacksController < Api::V1::Accounts::BaseController
 
       if (page_detail = (page_details || []).detect { |page| fb_page_id == page['id'] })
         update_fb_page(fb_page_id, page_detail['access_token'])
-        return head :ok
+        render and return
       end
     end
 
@@ -44,9 +64,15 @@ class Api::V1::Accounts::CallbacksController < Api::V1::Accounts::BaseController
   end
 
   def update_fb_page(fb_page_id, access_token)
-    get_fb_page(fb_page_id)&.update!(
-      user_access_token: @user_access_token, page_access_token: access_token
-    )
+    fb_page = get_fb_page(fb_page_id)
+    ActiveRecord::Base.transaction do
+      fb_page&.update!(user_access_token: @user_access_token, page_access_token: access_token)
+      sync_page_details(access_token, fb_page)
+      fb_page&.reauthorized!
+    rescue StandardError => e
+      ChatwootExceptionTracker.new(e).capture_exception
+      Rails.logger.error "Error in update_fb_page: #{e.message}"
+    end
   end
 
   def get_fb_page(fb_page_id)
@@ -59,49 +85,23 @@ class Api::V1::Accounts::CallbacksController < Api::V1::Accounts::BaseController
   end
 
   def long_lived_token(omniauth_token)
-    koala = Koala::Facebook::OAuth.new(ENV['FB_APP_ID'], ENV['FB_APP_SECRET'])
+    koala = Koala::Facebook::OAuth.new(GlobalConfigService.load('FB_APP_ID', ''), GlobalConfigService.load('FB_APP_SECRET', ''))
     koala.exchange_access_token_info(omniauth_token)['access_token']
   rescue StandardError => e
-    Rails.logger.info e
+    Rails.logger.error "Error in long_lived_token: #{e.message}"
   end
 
   def mark_already_existing_facebook_pages(data)
     return [] if data.empty?
 
     data.inject([]) do |result, page_detail|
-      page_detail[:exists] = Current.account.facebook_pages.exists?(page_id: page_detail['id']) ? true : false
+      page_detail[:exists] = Current.account.facebook_pages.exists?(page_id: page_detail['id'])
       result << page_detail
     end
   end
 
   def set_avatar(facebook_inbox, page_id)
-    uri = get_avatar_url(page_id)
-
-    return unless uri
-
-    avatar_resource = LocalResource.new(uri)
-    facebook_inbox.avatar.attach(io: avatar_resource.file, filename: avatar_resource.tmp_filename, content_type: avatar_resource.encoding)
-  rescue Errno::ETIMEDOUT, Errno::ECONNREFUSED, SocketError => e
-    Rails.logger.info "invalid url #{file_url} : #{e.message}"
-  end
-
-  def get_avatar_url(page_id)
-    begin
-      url = 'http://graph.facebook.com/' << page_id << '/picture?type=large'
-      uri = URI.parse(url)
-      tries = 3
-      begin
-        response = uri.open(redirect: false)
-      rescue OpenURI::HTTPRedirect => e
-        uri = e.uri # assigned from the "Location" response header
-        retry if (tries -= 1).positive?
-        raise
-      end
-      pic_url = response.base_uri.to_s
-    rescue StandardError => e
-      Rails.logger.debug "Rescued: #{e.inspect}"
-      pic_url = nil
-    end
-    pic_url
+    avatar_url = "https://graph.facebook.com/#{page_id}/picture?type=large"
+    Avatar::AvatarFromUrlJob.perform_later(facebook_inbox, avatar_url)
   end
 end

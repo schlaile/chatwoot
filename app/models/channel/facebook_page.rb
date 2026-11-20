@@ -8,6 +8,7 @@
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
 #  account_id        :integer          not null
+#  instagram_id      :string
 #  page_id           :string           not null
 #
 # Indexes
@@ -17,13 +18,18 @@
 #
 
 class Channel::FacebookPage < ApplicationRecord
+  include Channelable
+  include Reauthorizable
+
+  # TODO: Remove guard once encryption keys become mandatory (target 3-4 releases out).
+  if Chatwoot.encryption_configured?
+    encrypts :page_access_token
+    encrypts :user_access_token
+  end
+
   self.table_name = 'channel_facebook_pages'
 
-  validates :account_id, presence: true
   validates :page_id, uniqueness: { scope: :account_id }
-  belongs_to :account
-
-  has_one :inbox, as: :channel, dependent: :destroy
 
   after_create_commit :subscribe
   before_destroy :unsubscribe
@@ -32,27 +38,31 @@ class Channel::FacebookPage < ApplicationRecord
     'Facebook'
   end
 
-  def has_24_hour_messaging_window?
-    true
+  def create_contact_inbox(instagram_id, name)
+    @contact_inbox = ::ContactInboxWithContactBuilder.new({
+                                                            source_id: instagram_id,
+                                                            inbox: inbox,
+                                                            contact_attributes: { name: name }
+                                                          }).perform
   end
 
   def subscribe
     # ref https://developers.facebook.com/docs/messenger-platform/reference/webhook-events
-    response = Facebook::Messenger::Subscriptions.subscribe(
+    Facebook::Messenger::Subscriptions.subscribe(
       access_token: page_access_token,
       subscribed_fields: %w[
-        messages message_deliveries message_echoes message_reads
+        messages message_deliveries message_echoes message_reads standby messaging_handovers messaging_postbacks
       ]
     )
-  rescue => e
-    Rails.logger.debug "Rescued: #{e.inspect}"
+  rescue StandardError => e
+    Rails.logger.debug { "Rescued: #{e.inspect}" }
     true
   end
 
   def unsubscribe
     Facebook::Messenger::Subscriptions.unsubscribe(access_token: page_access_token)
-  rescue => e
-    Rails.logger.debug "Rescued: #{e.inspect}"
+  rescue StandardError => e
+    Rails.logger.debug { "Rescued: #{e.inspect}" }
     true
   end
 end

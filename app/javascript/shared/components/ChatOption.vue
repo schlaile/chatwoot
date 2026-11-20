@@ -1,14 +1,6 @@
-<template>
-  <li class="option" :class="{ 'is-selected': isSelected }">
-    <button class="option-button button" @click="onClick">
-      <span v-if="isSelected" class="icon ion-checkmark-circled" />
-      <span v-else class="icon ion-android-radio-button-off" />
-      <span>{{ action.title }}</span>
-    </button>
-  </li>
-</template>
-
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
   components: {},
   props: {
@@ -21,47 +13,42 @@ export default {
       default: false,
     },
   },
+  emits: ['optionSelect'],
+  computed: {
+    ...mapGetters({
+      widgetColor: 'appConfig/getWidgetColor',
+    }),
+  },
   methods: {
     onClick() {
-      this.$emit('click', this.action);
+      this.$emit('optionSelect', this.action);
     },
   },
 };
 </script>
 
+<template>
+  <li
+    class="option"
+    :class="{ 'is-selected': isSelected }"
+    :style="{ borderColor: widgetColor }"
+  >
+    <button class="option-button button" @click="onClick">
+      <span :style="{ color: widgetColor }">{{ action.title }}</span>
+    </button>
+  </li>
+</template>
+
 <style scoped lang="scss">
-@import '~dashboard/assets/scss/variables.scss';
-@import '~dashboard/assets/scss/mixins.scss';
 .option {
+  @apply rounded-[5rem] border border-solid border-n-brand ltr:float-left rtl:float-right m-1 max-w-full;
+
   .option-button {
-    width: 100%;
-    padding: 0;
-    max-height: $space-larger;
-    border-radius: 0;
-    background: transparent;
-    color: $color-woot;
-    border: 0;
-    text-align: left;
-    cursor: pointer;
+    @apply bg-transparent border-0 cursor-pointer h-auto leading-normal ltr:text-left rtl:text-right whitespace-normal rounded-[2rem] min-h-[2.5rem];
 
     span {
       display: inline-block;
       vertical-align: middle;
-    }
-
-    > .icon {
-      margin-right: $space-smaller;
-      font-size: $font-size-medium;
-    }
-  }
-
-  + .option .option-button {
-    @include border-normal-top;
-  }
-
-  &.is-selected {
-    .option-button {
-      color: $success-color;
     }
   }
 }

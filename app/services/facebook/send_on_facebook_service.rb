@@ -1,4 +1,6 @@
 class Facebook::SendOnFacebookService < Base::SendOnChannelService
+  include Facebook::HumanAgentTagHelpers
+
   private
 
   def channel_class
@@ -6,29 +8,103 @@ class Facebook::SendOnFacebookService < Base::SendOnChannelService
   end
 
   def perform_reply
-    FacebookBot::Bot.deliver(delivery_params, access_token: message.channel_token)
+    send_message_to_facebook fb_text_message_params if message.content.present?
+
+    if message.attachments.present?
+      message.attachments.each do |attachment|
+        send_message_to_facebook fb_attachment_message_params(attachment)
+      end
+    end
+  rescue Facebook::Messenger::FacebookError => e
+    # TODO : handle specific errors or else page will get disconnected
+    handle_facebook_error(e)
+    Messages::StatusUpdateService.new(message, 'failed', e.message).perform
+  end
+
+  def send_message_to_facebook(delivery_params)
+    parsed_result = deliver_message(delivery_params)
+    return if parsed_result.nil?
+
+    if parsed_result['error'].present?
+      Messages::StatusUpdateService.new(message, 'failed', external_error(parsed_result)).perform
+      Rails.logger.info "Facebook::SendOnFacebookService: Error sending message to Facebook : Page - #{channel.page_id} : #{parsed_result}"
+    end
+
+    message.update!(source_id: parsed_result['message_id']) if parsed_result['message_id'].present?
+  end
+
+  def deliver_message(delivery_params)
+    result = Facebook::Messenger::Bot.deliver(delivery_params, page_id: channel.page_id)
+    JSON.parse(result)
+  rescue JSON::ParserError
+    Messages::StatusUpdateService.new(message, 'failed', 'Facebook was unable to process this request').perform
+    Rails.logger.error "Facebook::SendOnFacebookService: Error parsing JSON response from Facebook : Page - #{channel.page_id} : #{result}"
+    nil
+  rescue Net::OpenTimeout
+    Messages::StatusUpdateService.new(message, 'failed', 'Request timed out, please try again later').perform
+    Rails.logger.error "Facebook::SendOnFacebookService: Timeout error sending message to Facebook : Page - #{channel.page_id}"
+    nil
   end
 
   def fb_text_message_params
-    {
+    params = {
       recipient: { id: contact.get_source_id(inbox.id) },
-      message: { text: message.content }
+      message: fb_text_message_payload
     }
+
+    merge_human_agent_tag(params)
   end
 
-  def fb_attachment_message_params
-    attachment = message.attachments.first
-    {
+  def fb_text_message_payload
+    if message.content_type == 'input_select' && message.content_attributes['items'].any?
+      {
+        text: message.content,
+        quick_replies: message.content_attributes['items'].map do |item|
+          {
+            content_type: 'text',
+            payload: item['title'],
+            title: item['title']
+          }
+        end
+      }
+    else
+      { text: message.outgoing_content }
+    end
+  end
+
+  def external_error(response)
+    # https://developers.facebook.com/docs/graph-api/guides/error-handling/
+    error_message = response['error']['message']
+    error_code = response['error']['code']
+
+    "#{error_code} - #{error_message}"
+  end
+
+  def fb_attachment_message_params(attachment)
+    params = {
       recipient: { id: contact.get_source_id(inbox.id) },
       message: {
         attachment: {
           type: attachment_type(attachment),
           payload: {
-            url: attachment.file_url
+            url: attachment.download_url
           }
         }
       }
     }
+
+    merge_human_agent_tag(params)
+  end
+
+  def merge_human_agent_tag(params)
+    unless GlobalConfigService.load('ENABLE_MESSENGER_CHANNEL_HUMAN_AGENT', nil) && human_agent_tag_applicable?
+      params[:messaging_type] = 'RESPONSE'
+      return params
+    end
+
+    params[:messaging_type] = 'MESSAGE_TAG'
+    params[:tag] = 'HUMAN_AGENT'
+    params
   end
 
   def attachment_type(attachment)
@@ -37,43 +113,10 @@ class Facebook::SendOnFacebookService < Base::SendOnChannelService
     'file'
   end
 
-  def fb_message_params
-    if message.attachments.blank?
-      fb_text_message_params
-    else
-      fb_attachment_message_params
-    end
-  end
+  def handle_facebook_error(exception)
+    # Refer: https://github.com/jgorset/facebook-messenger/blob/64fe1f5cef4c1e3fca295b205037f64dfebdbcab/lib/facebook/messenger/error.rb
+    return unless exception.to_s.include?('The session has been invalidated') || exception.to_s.include?('Error validating access token')
 
-  def delivery_params
-    if twenty_four_hour_window_over?
-      fb_message_params.merge(tag: 'ISSUE_RESOLUTION')
-    else
-      fb_message_params
-    end
-  end
-
-  def twenty_four_hour_window_over?
-    return false unless after_24_hours?
-    return false if last_incoming_and_outgoing_message_after_one_day?
-
-    true
-  end
-
-  def last_incoming_and_outgoing_message_after_one_day?
-    last_incoming_message && sent_first_outgoing_message_after_24_hours?
-  end
-
-  def after_24_hours?
-    (Time.current - last_incoming_message.created_at) / 3600 >= 24
-  end
-
-  def sent_first_outgoing_message_after_24_hours?
-    # we can send max 1 message after 24 hour window
-    conversation.messages.outgoing.where('id > ?', last_incoming_message.id).count == 1
-  end
-
-  def last_incoming_message
-    conversation.messages.incoming.last
+    channel.authorization_error!
   end
 end

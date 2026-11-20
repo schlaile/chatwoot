@@ -1,45 +1,46 @@
 class ConversationReplyMailer < ApplicationMailer
-  default from: ENV.fetch('MAILER_SENDER_EMAIL', 'accounts@chatwoot.com')
+  # We needs to expose large attachments to the view as links
+  # Small attachments are linked as mail attachments directly
+  attr_reader :large_attachments
+
+  include ConversationReplyMailerHelper
+  include ReferencesHeaderBuilder
+  include EmailAddressParseable
+  default from: ENV.fetch('MAILER_SENDER_EMAIL', 'Chatwoot <accounts@chatwoot.com>')
   layout :choose_layout
 
-  def reply_with_summary(conversation, message_queued_time)
+  def reply_with_summary(conversation, last_queued_id)
     return unless smtp_config_set_or_development?
 
     init_conversation_attributes(conversation)
     return if conversation_already_viewed?
 
-    recap_messages = @conversation.messages.chat.where('created_at < ?', message_queued_time).last(10)
-    new_messages = @conversation.messages.chat.where('created_at >= ?', message_queued_time)
+    recap_messages = @conversation.messages.chat.where('id < ?', last_queued_id).last(10)
+    new_messages = @conversation.messages.chat.where('id >= ?', last_queued_id)
     @messages = recap_messages + new_messages
-    @messages = @messages.select(&:reportable?)
-
-    mail({
-           to: @contact&.email,
-           from: from_email,
-           reply_to: reply_email,
-           subject: mail_subject,
-           message_id: custom_message_id,
-           in_reply_to: in_reply_to_email
-         })
+    @messages = @messages.select(&:email_reply_summarizable?)
+    prepare_mail(true)
   end
 
-  def reply_without_summary(conversation, message_queued_time)
+  def reply_without_summary(conversation, last_queued_id)
     return unless smtp_config_set_or_development?
 
     init_conversation_attributes(conversation)
     return if conversation_already_viewed?
 
-    @messages = @conversation.messages.chat.outgoing.where('created_at >= ?', message_queued_time)
+    @messages = @conversation.messages.chat.where(message_type: [:outgoing, :template]).where('id >= ?', last_queued_id)
+    @messages = @messages.reject { |m| m.template? && !m.input_csat? }
     return false if @messages.count.zero?
 
-    mail({
-           to: @contact&.email,
-           from: from_email,
-           reply_to: reply_email,
-           subject: mail_subject,
-           message_id: custom_message_id,
-           in_reply_to: in_reply_to_email
-         })
+    prepare_mail(false)
+  end
+
+  def email_reply(message)
+    init_conversation_attributes(message.conversation)
+    return unless smtp_config_set_or_development? || email_smtp_enabled? || (email_imap_enabled? && email_oauth_enabled?)
+
+    @message = message
+    prepare_mail(true)
   end
 
   def conversation_transcript(conversation, to_email)
@@ -47,11 +48,14 @@ class ConversationReplyMailer < ApplicationMailer
 
     init_conversation_attributes(conversation)
 
-    @messages = @conversation.messages.chat.select(&:reportable?)
+    @messages = @conversation.messages.chat.select(&:conversation_transcriptable?)
 
+    Rails.logger.info("Email sent from #{from_email_with_name} \
+      to #{to_email} with subject #{@conversation.display_id} \
+      #{I18n.t('conversations.reply.transcript_subject')} ")
     mail({
            to: to_email,
-           from: from_email,
+           from: from_email_with_name,
            subject: "[##{@conversation.display_id}] #{I18n.t('conversations.reply.transcript_subject')}"
          })
   end
@@ -63,6 +67,14 @@ class ConversationReplyMailer < ApplicationMailer
     @account = @conversation.account
     @contact = @conversation.contact
     @agent = @conversation.assignee
+    @inbox = @conversation.inbox
+    @channel = @inbox.channel
+    Current.account = @account
+    Current.inbox = @inbox
+  end
+
+  def should_use_conversation_email_address?
+    @inbox.inbox_type == 'Email' || inbound_email_enabled?
   end
 
   def conversation_already_viewed?
@@ -77,62 +89,146 @@ class ConversationReplyMailer < ApplicationMailer
     @conversation.messages.chat.where.not(message_type: :incoming)&.last
   end
 
-  def assignee_name
-    @assignee_name ||= @agent&.available_name || 'Notifications'
-  end
-
-  def mail_subject
-    subject_line = I18n.t('conversations.reply.email_subject')
-    "[##{@conversation.display_id}] #{subject_line}"
-  end
-
-  def reply_email
-    if inbound_email_enabled?
-      "#{assignee_name} <reply+#{@conversation.uuid}@#{current_domain}>"
+  def sender_name(sender_email)
+    if @inbox.friendly?
+      Email::SenderNameBuilder.new(
+        account: @account,
+        sender: current_message&.sender,
+        sender_email: sender_email,
+        sender_name: custom_sender_name,
+        business_name: business_name
+      ).build
     else
-      @agent&.email
+      format_email_with_name(business_name, sender_email)
     end
+  end
+
+  def current_message
+    @message || @conversation.messages.outgoing.last
+  end
+
+  def custom_sender_name
+    current_message&.sender&.available_name || @agent&.available_name || I18n.t('conversations.reply.email.header.notifications')
+  end
+
+  def business_name
+    @inbox.sanitized_business_name
   end
 
   def from_email
-    if inbound_email_enabled?
-      "#{assignee_name} <#{account_support_email}>"
+    should_use_conversation_email_address? ? parse_email(@account.support_email) : parse_email(inbox_from_email_address)
+  end
+
+  def mail_subject
+    subject = @message&.forwarded? ? forwarded_subject : @conversation.additional_attributes['mail_subject']
+    return "[##{@conversation.display_id}] #{notification_email_subject}" if subject.nil?
+    return "Fwd: #{subject}" if @message&.forwarded?
+
+    @conversation.messages.chat.count > 1 ? "Re: #{subject}" : subject
+  end
+
+  def reply_email
+    if should_use_conversation_email_address?
+      sender_name("reply+#{@conversation.uuid}@#{@account.inbound_email_domain}")
     else
-      "#{assignee_name} <#{ENV.fetch('MAILER_SENDER_EMAIL', 'accounts@chatwoot.com')}>"
+      @inbox.email_address || @agent&.email
     end
+  end
+
+  def from_email_with_name
+    sender_name(from_email)
+  end
+
+  def channel_email_with_name
+    sender_name(@channel.email)
+  end
+
+  def inbox_from_email_address
+    return @inbox.email_address if @inbox.email_address
+
+    @account.support_email
   end
 
   def custom_message_id
-    "<conversation/#{@conversation.uuid}/messages/#{@messages&.last&.id}@#{current_domain}>"
+    last_message = @message || @messages&.last
+    return "<forward/#{last_message.id}@#{channel_email_domain}>" if last_message&.forwarded?
+
+    "<conversation/#{@conversation.uuid}/messages/#{last_message&.id}@#{channel_email_domain}>"
   end
 
   def in_reply_to_email
-    "<account/#{@account.id}/conversation/#{@conversation.uuid}@#{current_domain}>"
+    return if @message&.forwarded?
+
+    conversation_reply_email_id || "<account/#{@account.id}/conversation/#{@conversation.uuid}@#{channel_email_domain}>"
+  end
+
+  def conversation_reply_email_id
+    # Find the last incoming message's message_id to reply to
+    content_attributes = @conversation.messages.incoming.last&.content_attributes
+
+    if content_attributes && content_attributes['email'] && content_attributes['email']['message_id']
+      return "<#{content_attributes['email']['message_id']}>"
+    end
+
+    nil
+  end
+
+  def references_header
+    build_references_header(@conversation, in_reply_to_email).presence
+  end
+
+  def forwarded_subject
+    forwarded_message = @conversation.messages.find_by(id: @message.content_attributes['forwarded_message_id'])
+    forwarded_message&.content_attributes&.dig('email', 'subject').presence || @conversation.additional_attributes['mail_subject']
+  end
+
+  def cc_bcc_emails
+    content_attributes = current_message&.content_attributes
+
+    return [] unless content_attributes
+    return [] unless content_attributes[:cc_emails] || content_attributes[:bcc_emails]
+
+    [content_attributes[:cc_emails], content_attributes[:bcc_emails]]
+  end
+
+  def to_emails_from_content_attributes
+    content_attributes = current_message&.content_attributes
+
+    return [] unless content_attributes
+    return [] unless content_attributes[:to_emails]
+
+    content_attributes[:to_emails]
+  end
+
+  def to_emails
+    # if there is no to_emails from content_attributes, send it to @contact&.email
+    to_emails_from_content_attributes.presence || [@contact&.email]
   end
 
   def inbound_email_enabled?
-    @inbound_email_enabled ||= @account.feature_enabled?('inbound_emails') && current_domain.present? && account_support_email.present?
-  end
-
-  def current_domain
-    @current_domain ||= begin
-      @account.domain ||
-        ENV.fetch('MAILER_INBOUND_EMAIL_DOMAIN', false) ||
-        GlobalConfig.get('MAILER_INBOUND_EMAIL_DOMAIN')['MAILER_INBOUND_EMAIL_DOMAIN']
-    end
-  end
-
-  def account_support_email
-    @account_support_email ||= begin
-      @account.support_email ||
-        GlobalConfig.get('MAILER_SUPPORT_EMAIL')['MAILER_SUPPORT_EMAIL'] ||
-        ENV.fetch('MAILER_SENDER_EMAIL', 'accounts@chatwoot.com')
-    end
+    @inbound_email_enabled ||= @account.feature_enabled?('inbound_emails') && @account.inbound_email_domain
+                                                                                      .present? && @account.support_email.present?
   end
 
   def choose_layout
-    return false if action_name == 'reply_without_summary'
+    return 'mailer/base' if branded_email_layout_action?
+    return false if action_name == 'reply_without_summary' || action_name == 'email_reply'
 
     'mailer/base'
+  end
+
+  def branded_email_layout_action?
+    return false unless action_name.in?(%w[email_reply reply_without_summary])
+    return @inbox.branded_email_layout_available? if @inbox&.email?
+
+    @account&.feature_enabled?(:branded_email_templates) && EmailTemplate.account_branded_layout_template_for(@account).present?
+  end
+
+  def liquid_droppables
+    super.merge({
+                  agent: current_message&.sender || @agent,
+                  contact: @contact,
+                  message: @message || @messages&.last
+                })
   end
 end

@@ -12,26 +12,39 @@ class GlobalConfig
         config[config_key] = load_from_cache(config_key)
       end
 
+      typecast_config(config)
       config.with_indifferent_access
     end
 
+    def get_value(arg)
+      load_from_cache(arg)
+    end
+
     def clear_cache
-      cached_keys = $alfred.keys("#{VERSION}:#{KEY_PREFIX}:*")
-      (cached_keys || []).each do |cached_key|
-        $alfred.expire(cached_key, 0)
+      $alfred.with do |conn|
+        cached_keys = conn.scan_each(match: "#{VERSION}:#{KEY_PREFIX}:*", count: 1000).to_a
+        conn.del(*cached_keys) if cached_keys.any?
       end
     end
 
     private
 
+    def typecast_config(config)
+      general_configs = ConfigLoader.new.general_configs
+      config.each do |config_key, config_value|
+        config_type = general_configs.find { |c| c['name'] == config_key }&.dig('type')
+        config[config_key] = ActiveRecord::Type::Boolean.new.cast(config_value) if config_type == 'boolean'
+      end
+    end
+
     def load_from_cache(config_key)
       cache_key = "#{VERSION}:#{KEY_PREFIX}:#{config_key}"
-      cached_value = $alfred.get(cache_key)
+      cached_value = $alfred.with { |conn| conn.get(cache_key) }
 
       if cached_value.blank?
         value_from_db = db_fallback(config_key)
         cached_value = { value: value_from_db }.to_json
-        $alfred.set(cache_key, cached_value, { ex: DEFAULT_EXPIRY })
+        $alfred.with { |conn| conn.set(cache_key, cached_value, { ex: DEFAULT_EXPIRY }) }
       end
 
       JSON.parse(cached_value)['value']

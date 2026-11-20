@@ -1,55 +1,26 @@
-<template>
-  <div class="chat-message--input">
-    <resizable-text-area
-      v-model="userInput"
-      :placeholder="$t('CHAT_PLACEHOLDER')"
-      class="form-input user-message-input"
-      @focus="onFocus"
-      @blur="onBlur"
-    />
-    <div class="button-wrap">
-      <chat-attachment-button
-        v-if="showAttachment"
-        :on-attach="onSendAttachment"
-      />
-      <emoji-input
-        v-if="showEmojiPicker"
-        v-on-clickaway="hideEmojiPicker"
-        :on-click="emojiOnClick"
-      />
-      <i
-        v-if="hasEmojiPickerEnabled"
-        class="emoji-toggle icon ion-happy-outline"
-        :class="{ active: showEmojiPicker }"
-        @click="toggleEmojiPicker()"
-      />
-      <chat-send-button
-        v-if="showSendButton"
-        :on-click="handleButtonClick"
-        :color="widgetColor"
-      />
-    </div>
-  </div>
-</template>
-
 <script>
+import { defineAsyncComponent } from 'vue';
 import { mapGetters } from 'vuex';
-import { mixin as clickaway } from 'vue-clickaway';
-import ChatSendButton from 'widget/components/ChatSendButton.vue';
+
 import ChatAttachmentButton from 'widget/components/ChatAttachment.vue';
-import ResizableTextArea from 'shared/components/ResizableTextArea';
-import EmojiInput from 'shared/components/emoji/EmojiInput';
-import configMixin from '../mixins/configMixin';
+import ChatSendButton from 'widget/components/ChatSendButton.vue';
+import { useAttachments } from '../composables/useAttachments';
+import FluentIcon from 'shared/components/FluentIcon/Index.vue';
+import ResizableTextArea from 'shared/components/ResizableTextArea.vue';
+
+const EmojiPicker = defineAsyncComponent(
+  () => import('shared/components/emoji/EmojiPicker.vue')
+);
 
 export default {
   name: 'ChatInputWrap',
   components: {
     ChatAttachmentButton,
     ChatSendButton,
-    EmojiInput,
+    EmojiPicker,
+    FluentIcon,
     ResizableTextArea,
   },
-  mixins: [clickaway, configMixin],
   props: {
     onSendMessage: {
       type: Function,
@@ -60,39 +31,69 @@ export default {
       default: () => {},
     },
   },
-
+  setup() {
+    const {
+      canHandleAttachments,
+      shouldShowEmojiPicker,
+      hasEmojiPickerEnabled,
+    } = useAttachments();
+    return {
+      canHandleAttachments,
+      shouldShowEmojiPicker,
+      hasEmojiPickerEnabled,
+    };
+  },
   data() {
     return {
       userInput: '',
       showEmojiPicker: false,
+      isFocused: false,
     };
   },
 
   computed: {
     ...mapGetters({
       widgetColor: 'appConfig/getWidgetColor',
+      isWidgetOpen: 'appConfig/getIsWidgetOpen',
+      shouldShowEmojiPicker: 'appConfig/getShouldShowEmojiPicker',
     }),
     showAttachment() {
-      return this.hasAttachmentsEnabled && this.userInput.length === 0;
+      return this.canHandleAttachments && this.userInput.length === 0;
     },
     showSendButton() {
       return this.userInput.length > 0;
     },
   },
-
-  destroyed() {
+  watch: {
+    isWidgetOpen(isWidgetOpen) {
+      if (isWidgetOpen) {
+        this.focusInput();
+      }
+    },
+  },
+  unmounted() {
     document.removeEventListener('keypress', this.handleEnterKeyPress);
   },
   mounted() {
     document.addEventListener('keypress', this.handleEnterKeyPress);
+    if (this.isWidgetOpen) {
+      this.focusInput();
+    }
   },
 
   methods: {
+    onBlur() {
+      this.isFocused = false;
+    },
+    onFocus() {
+      this.isFocused = true;
+    },
     handleButtonClick() {
       if (this.userInput && this.userInput.trim()) {
         this.onSendMessage(this.userInput);
       }
       this.userInput = '';
+      this.focusInput();
     },
     handleEnterKeyPress(e) {
       if (e.keyCode === 13 && !e.shiftKey) {
@@ -103,61 +104,95 @@ export default {
     toggleEmojiPicker() {
       this.showEmojiPicker = !this.showEmojiPicker;
     },
-    hideEmojiPicker() {
+    hideEmojiPicker(e) {
       if (this.showEmojiPicker) {
+        e.stopPropagation();
         this.toggleEmojiPicker();
       }
     },
     emojiOnClick(emoji) {
       this.userInput = `${this.userInput}${emoji} `;
     },
-    onBlur() {
+    onSelectEmoji({ value }) {
+      this.emojiOnClick(value);
+    },
+    onTypingOff() {
       this.toggleTyping('off');
     },
-    onFocus() {
+    onTypingOn() {
       this.toggleTyping('on');
     },
     toggleTyping(typingStatus) {
       this.$store.dispatch('conversation/toggleUserTyping', { typingStatus });
     },
+    focusInput() {
+      this.$refs.chatInput.focus();
+    },
   },
 };
 </script>
 
+<template>
+  <div
+    class="items-center flex ltr:pl-3 rtl:pr-3 ltr:pr-2 rtl:pl-2 rounded-[7px] transition-all duration-200 bg-n-background !shadow-[0_0_0_1px,0_0_2px_3px]"
+    :class="{
+      '!shadow-[var(--widget-color,#2781f6)]': isFocused,
+      '!shadow-n-strong dark:!shadow-n-strong': !isFocused,
+    }"
+    @keydown.esc="hideEmojiPicker"
+  >
+    <ResizableTextArea
+      id="chat-input"
+      ref="chatInput"
+      v-model="userInput"
+      :rows="1"
+      :aria-label="$t('CHAT_PLACEHOLDER')"
+      :placeholder="$t('CHAT_PLACEHOLDER')"
+      class="user-message-input reset-base"
+      @typing-off="onTypingOff"
+      @typing-on="onTypingOn"
+      @focus="onFocus"
+      @blur="onBlur"
+    />
+    <div class="relative flex items-center ltr:pl-2 rtl:pr-2">
+      <ChatAttachmentButton
+        v-if="showAttachment"
+        class="text-n-slate-12"
+        :on-attach="onSendAttachment"
+      />
+      <button
+        v-if="shouldShowEmojiPicker && hasEmojiPickerEnabled"
+        class="flex items-center justify-center min-h-8 min-w-8"
+        :aria-label="$t('EMOJI.ARIA_LABEL')"
+        @click="toggleEmojiPicker"
+      >
+        <FluentIcon
+          icon="emoji"
+          class="transition-all duration-150"
+          :class="{
+            'text-n-slate-12': !showEmojiPicker,
+            'text-n-brand': showEmojiPicker,
+          }"
+        />
+      </button>
+      <EmojiPicker
+        v-if="shouldShowEmojiPicker && showEmojiPicker"
+        v-on-clickaway="hideEmojiPicker"
+        class="!bottom-full end-0 mb-2 max-w-[calc(100vw-3rem)]"
+        @select="onSelectEmoji"
+        @keydown.esc="hideEmojiPicker"
+      />
+      <ChatSendButton
+        v-if="showSendButton"
+        :color="widgetColor"
+        @click="handleButtonClick"
+      />
+    </div>
+  </div>
+</template>
+
 <style scoped lang="scss">
-@import '~widget/assets/scss/variables.scss';
-
-.chat-message--input {
-  align-items: center;
-  display: flex;
-}
-
-.emoji-toggle {
-  font-size: $font-size-large;
-  color: $color-gray;
-  padding-right: $space-smaller;
-  cursor: pointer;
-}
-
-.emoji-dialog {
-  right: $space-one;
-}
-
-.file-uploads {
-  margin-right: $space-small;
-}
-
-.button-wrap {
-  display: flex;
-  align-items: center;
-}
-
 .user-message-input {
-  border: 0;
-  height: $space-large;
-  min-height: $space-large;
-  max-height: 2.4 * $space-mega;
-  resize: none;
-  padding-top: $space-small;
+  @apply border-none outline-none w-full placeholder:text-n-slate-10 resize-none h-8 min-h-8 max-h-60 py-1 px-0 my-2 bg-n-background text-n-slate-12 transition-all duration-200;
 }
 </style>

@@ -1,43 +1,123 @@
 class AgentNotifications::ConversationNotificationsMailer < ApplicationMailer
-  def conversation_creation(conversation, agent)
+  TRANSLATIONS_KEY = 'mailers.agent_notifications'.freeze
+
+  def conversation_creation(conversation, agent, _user)
     return unless smtp_config_set_or_development?
 
     @agent = agent
     @conversation = conversation
-    subject = "#{@agent.available_name}, A new conversation [ID - #{@conversation.display_id}] has been created in #{@conversation.inbox&.name}."
+    inbox_name = @conversation.inbox&.sanitized_name
+    subject = I18n.t(
+      'mailers.subjects.agent_notifications.conversation_creation',
+      agent_name: @agent.available_name,
+      conversation_id: @conversation.display_id,
+      inbox_name: inbox_name
+    )
     @action_url = app_account_conversation_url(account_id: @conversation.account_id, id: @conversation.display_id)
     send_mail_with_liquid(to: @agent.email, subject: subject) and return
   end
 
-  def conversation_assignment(conversation, agent)
+  def conversation_assignment(conversation, agent, _user)
     return unless smtp_config_set_or_development?
 
     @agent = agent
     @conversation = conversation
-    subject = "#{@agent.available_name}, A new conversation [ID - #{@conversation.display_id}] has been assigned to you."
+    subject = I18n.t(
+      'mailers.subjects.agent_notifications.conversation_assignment',
+      agent_name: @agent.available_name,
+      conversation_id: @conversation.display_id
+    )
     @action_url = app_account_conversation_url(account_id: @conversation.account_id, id: @conversation.display_id)
     send_mail_with_liquid(to: @agent.email, subject: subject) and return
   end
 
-  def assigned_conversation_new_message(conversation, agent)
+  def conversation_mention(conversation, agent, message)
+    return unless smtp_config_set_or_development?
+
+    @agent = agent
+    @conversation = conversation
+    @message = message
+    subject = I18n.t(
+      'mailers.subjects.agent_notifications.conversation_mention',
+      agent_name: @agent.available_name,
+      conversation_id: @conversation.display_id
+    )
+    @action_url = app_account_conversation_url(account_id: @conversation.account_id, id: @conversation.display_id)
+    send_mail_with_liquid(to: @agent.email, subject: subject) and return
+  end
+
+  def assigned_conversation_new_message(conversation, agent, message)
     return unless smtp_config_set_or_development?
     # Don't spam with email notifications if agent is online
-    return if ::OnlineStatusTracker.get_presence(conversation.account.id, 'User', agent.id)
+    return if ::OnlineStatusTracker.get_presence(message.account_id, 'User', agent.id)
 
     @agent = agent
     @conversation = conversation
-    subject = "#{@agent.available_name}, New message in your assigned conversation [ID - #{@conversation.display_id}]."
+    subject = I18n.t(
+      'mailers.subjects.agent_notifications.assigned_conversation_new_message',
+      agent_name: @agent.available_name,
+      conversation_id: @conversation.display_id
+    )
+    @action_url = app_account_conversation_url(account_id: @conversation.account_id, id: @conversation.display_id)
+    send_mail_with_liquid(to: @agent.email, subject: subject) and return
+  end
+
+  def participating_conversation_new_message(conversation, agent, message)
+    return unless smtp_config_set_or_development?
+    # Don't spam with email notifications if agent is online
+    return if ::OnlineStatusTracker.get_presence(message.account_id, 'User', agent.id)
+
+    @agent = agent
+    @conversation = conversation
+    subject = I18n.t(
+      'mailers.subjects.agent_notifications.participating_conversation_new_message',
+      agent_name: @agent.available_name,
+      conversation_id: @conversation.display_id
+    )
     @action_url = app_account_conversation_url(account_id: @conversation.account_id, id: @conversation.display_id)
     send_mail_with_liquid(to: @agent.email, subject: subject) and return
   end
 
   private
 
+  def liquid_locals
+    super.merge(
+      notification_settings_url: "#{app_account_url(@conversation.account_id)}/profile/settings",
+      agent_notification: agent_notification_translations
+    )
+  end
+
+  def agent_notification_translations
+    I18n.t(TRANSLATIONS_KEY).merge(
+      greeting: I18n.t("#{TRANSLATIONS_KEY}.greeting", name: @agent.available_name),
+      conversation_creation_after_id: I18n.t(
+        "#{TRANSLATIONS_KEY}.conversation_creation_after_id", inbox_name: @conversation.inbox&.sanitized_name
+      )
+    ).merge(sla_notification_translations).stringify_keys
+  end
+
+  def sla_notification_translations
+    %i[sla_missed_first_response sla_missed_next_response sla_missed_resolution].index_with do |key|
+      I18n.t("#{TRANSLATIONS_KEY}.#{key}", **sla_interpolation)
+    end
+  end
+
+  def sla_interpolation
+    {
+      conversation_id: @conversation.display_id,
+      inbox_name: @conversation.inbox&.sanitized_name,
+      policy_name: @sla_policy&.name
+    }
+  end
+
   def liquid_droppables
     super.merge({
                   user: @agent,
                   conversation: @conversation,
-                  inbox: @conversation.inbox
+                  inbox: @conversation.inbox,
+                  message: @message
                 })
   end
 end
+
+AgentNotifications::ConversationNotificationsMailer.prepend_mod_with('AgentNotifications::ConversationNotificationsMailer')

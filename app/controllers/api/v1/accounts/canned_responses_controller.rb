@@ -17,7 +17,7 @@ class Api::V1::Accounts::CannedResponsesController < Api::V1::Accounts::BaseCont
   end
 
   def destroy
-    @canned_response.destroy
+    @canned_response.destroy!
     head :ok
   end
 
@@ -33,7 +33,11 @@ class Api::V1::Accounts::CannedResponsesController < Api::V1::Accounts::BaseCont
 
   def canned_responses
     if params[:search]
-      Current.account.canned_responses.where('short_code ILIKE ?', "#{params[:search]}%")
+      search = params[:search].delete("\0")
+      Current.account.canned_responses
+             .where('short_code ILIKE :search OR content ILIKE :search', search: "%#{search}%")
+             .order_by_search(search)
+
     else
       Current.account.canned_responses
     end
