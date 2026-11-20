@@ -26,6 +26,12 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     super
   end
 
+  def destroy
+    # Read before DeviseTokenAuth drops the token; nil unless the session came from OIDC.
+    @oidc_logout_url = Oidc::LogoutService.logout_url(@resource, @token&.client) if @resource
+    super
+  end
+
   def render_create_success
     track_user_session unless @impersonation
     if @backup_codes.present?
@@ -33,6 +39,10 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     else
       render partial: 'devise/auth', formats: [:json], locals: { resource: @resource }
     end
+  end
+
+  def render_destroy_success
+    render json: { success: true, oidc_logout_url: @oidc_logout_url }.compact, status: :ok
   end
 
   private
@@ -92,6 +102,8 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     sign_in(:user, @resource, store: false, bypass: false)
     # invalidate the token after the user is signed in
     @resource.invalidate_sso_auth_token(params[:sso_auth_token])
+    # an OIDC login keeps its ID token for logging out of the provider later
+    Oidc::LogoutService.attach_to_client(@resource, @token.client) unless @impersonation
   end
 
   def make_room_for_impersonation_token

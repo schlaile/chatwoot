@@ -24,6 +24,11 @@
     "FORGOT_PASSWORD": "Haben Sie Ihr Passwort vergessen?",
     "CREATE_NEW_ACCOUNT": "Neuen Account erstellen",
     "SUBMIT": "Einloggen",
+    "OIDC": {
+      "LABEL": "Mit Single Sign-On anmelden",
+      "ERROR_MESSAGE": "Die Anmeldung per Single Sign-On ist fehlgeschlagen. Bitte versuchen Sie es erneut oder melden Sie sich mit Ihrem Passwort an.",
+      "NO_AGENT": "Die Anmeldung per Single Sign-On hat geklappt, aber in Chatwoot gibt es noch keinen Agenten mit Ihrer E-Mail-Adresse. Ein Administrator muss Sie in Chatwoot als Agent anlegen."
+    },
     "SAML": {
       "LABEL": "Login via SSO",
       "TITLE": "Initiate Single Sign-on (SSO)",
