@@ -120,7 +120,8 @@ ARG RAILS_ENV=production
 ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
-RUN apk update && apk add --no-cache \
+# apk upgrade picks up Alpine security fixes released after the base image
+RUN apk update && apk upgrade --no-cache && apk add --no-cache \
   build-base \
   openssl \
   tzdata \

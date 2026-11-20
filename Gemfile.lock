@@ -873,7 +873,7 @@ GEM
       sprockets (> 3.0)
       sprockets-rails
       tilt
-    scout_apm (5.3.3)
+    scout_apm (5.8.0)
       parser
     scss_lint (0.60.0)
       sass (~> 3.5, >= 3.5.5)
