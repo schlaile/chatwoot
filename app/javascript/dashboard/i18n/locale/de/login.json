@@ -24,6 +24,10 @@
     "FORGOT_PASSWORD": "Haben Sie Ihr Passwort vergessen?",
     "CREATE_NEW_ACCOUNT": "Neuen Account erstellen",
     "SUBMIT": "Einloggen",
+    "OIDC": {
+      "LABEL": "Mit Single Sign-On anmelden",
+      "ERROR_MESSAGE": "Die Anmeldung per Single Sign-On ist fehlgeschlagen. Bitte versuchen Sie es erneut oder melden Sie sich mit Ihrem Passwort an."
+    },
     "SAML": {
       "LABEL": "Login via SSO",
       "TITLE": "Initiate Single Sign-on (SSO)",

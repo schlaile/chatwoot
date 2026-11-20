@@ -18,6 +18,24 @@ describe '/app/login', type: :request do
     end
   end
 
+  context 'with OIDC login configured' do
+    it 'offers the OIDC login method and its label' do
+      with_modified_env OIDC_ISSUER: 'https://login.example.com/application/o/chatwoot/', OIDC_CLIENT_ID: 'chatwoot',
+                        OIDC_CLIENT_SECRET: 'secret', OIDC_LOGIN_LABEL: 'Mit Schlaile-Login anmelden' do
+        get '/app/login'
+        expect(response.body).to include('"oidc"')
+        expect(response.body).to include("oidcLoginLabel: 'Mit Schlaile-Login anmelden'")
+      end
+    end
+
+    it 'does not offer OIDC without a client secret' do
+      with_modified_env OIDC_ISSUER: 'https://login.example.com/application/o/chatwoot/', OIDC_CLIENT_ID: 'chatwoot' do
+        get '/app/login'
+        expect(response.body).not_to include('"oidc"')
+      end
+    end
+  end
+
   context 'with non-HTML format' do
     it 'returns not acceptable for JSON with error message' do
       get '/app/login', headers: { 'Accept' => 'application/json' }

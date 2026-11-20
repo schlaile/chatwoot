@@ -57,4 +57,10 @@ module ChatwootApp
 
     otel_provider.present? && secret_key.present? && otel_provider == 'langfuse'
   end
+
+  # Login via a generic OpenID Connect provider is configured purely through
+  # the environment (see config/initializers/omniauth.rb).
+  def self.oidc_login_enabled?
+    %w[OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET].all? { |key| ENV.fetch(key, nil).present? }
+  end
 end
