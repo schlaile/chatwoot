@@ -29,7 +29,7 @@ RSpec.describe Llm::FeatureRouter do
       end
 
       it 'uses it for editor tasks ahead of account and built-in defaults' do
-        account.update!(captain_models: { 'editor' => 'gpt-4.1' })
+        account.update!(captain_models: { 'editor' => 'gpt-5.1' })
 
         resolved = described_class.resolve(feature: 'editor', account: account)
 
